@@ -10,11 +10,11 @@ task :seed_stocks => :environment do
   #Scrape::BiznesRadar.seed_from_index('https://www.biznesradar.pl/gielda/akcje_gpw', 'GPW')
   #Scrape::BiznesRadar.seed_from_index('https://www.biznesradar.pl/gielda/newconnect', 'NewConnect')
 
-  Stock.not_banks.all.each do |stock|
-    Scrape::BiznesRadar.seed_details(stock)
-  end
+  #Stock.not_banks.all.each do |stock|
+    #Scrape::BiznesRadar.seed_details(stock)
+  #end
   #puts "Missing: ", Translators::IncomeStatement.missing
 
-  #stock = Stock.find_by_ticker '08N'
-  #Scrape::BiznesRadar.seed_details(stock)
+  stock = Stock.find_by_ticker '11B'
+  Scrape::BiznesRadar.seed_details(stock)
 end

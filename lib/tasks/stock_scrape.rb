@@ -162,6 +162,7 @@ module Scrape
 
       matrix = {}
       years = ScrapeHelpers::BzRadar.extract_years doc
+      return nil if years.blank?
       first_year = years[0]
       last_year = years[-1]
 
@@ -174,13 +175,21 @@ module Scrape
       rows.each_with_index do |row, row_index|
         category = row.children[0].text
         category = Translators::BzRadar.tr category
+        break if category == 'ignore'
         row.children[1..-1].each_with_index do |col, col_index|
           begin
-            value = col.text.gsub(' ','').to_d
+            current_year = first_year + col_index
+            break if years.include? current_year
+            value = col.text.gsub(' ','')
+            value = 0 if value.blank?
+            value = value.to_d
             value = value / 1000 unless thousands
-            matrix[first_year + col_index][category] = value
-          rescue ArgumentError => e
-            $logger.warn("ArgumentError for url" + url + " col: " + col)
+            matrix[current_year][category] = value
+          #rescue ArgumentError => e
+            #binding.irb
+            #$logger.warn("ArgumentError for url" + url + " col: " + col.text + "row: " + row.text)
+          rescue NoMethodError => e
+            binding.irb
           end
         end
       end

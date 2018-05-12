@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_05_03_161434) do
+ActiveRecord::Schema.define(version: 2018_05_09_204357) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -96,6 +96,17 @@ ActiveRecord::Schema.define(version: 2018_05_03_161434) do
   create_table "markets", force: :cascade do |t|
     t.string "name"
     t.index ["name"], name: "index_markets_on_name", unique: true
+  end
+
+  create_table "prices", force: :cascade do |t|
+    t.decimal "open"
+    t.decimal "close"
+    t.decimal "high"
+    t.decimal "low"
+    t.decimal "volume"
+    t.datetime "time"
+    t.bigint "stock_id"
+    t.index ["stock_id"], name: "index_prices_on_stock_id"
   end
 
   create_table "sectors", force: :cascade do |t|

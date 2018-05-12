@@ -4,6 +4,7 @@ class Stock < ApplicationRecord
   has_many :income_statements
   has_many :balance_sheets
   has_many :cash_flows
+  has_many :prices
 
   validates :name, presence: true, uniqueness: true
 
