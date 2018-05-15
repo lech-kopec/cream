@@ -1,21 +1,25 @@
 module PriceImporters
   module MstallDB
     def self.import_historical(stock)
-      File.open("tmp/mstall/#{stock.name.upcase}.mst") do |file|
-        file.readline #skipping first line - no values
-        file.readlines.each do |line|
-
-          if stock.prices.any?
-            latest_price_date = stock.prices.latest.time.to_date
-          else
-            latest_price_date = Date.parse('19900101')
-          end
-
-          attrs = self.line_to_stock_attrs line
-          next if latest_price_date >= attrs[:time]
-          stock.prices.create attrs
-        end
+      if stock.prices.any?
+        @@latest_price_date = stock.prices.latest.time.to_date
+      else
+        @@latest_price_date = Date.parse('19900101')
       end
+
+      puts "Opening file for " + stock.name
+      File.open("tmp/mstall/#{stock.name.upcase}.mst").readlines.each do |line|
+        next if line.include? 'TICKER'
+        attrs = self.line_to_stock_attrs line
+        next if @@latest_price_date >= attrs[:time]
+        attrs[:stock_id] = stock.id
+        Price.create!(attrs)
+        #x = stock.prices.create! attrs; nil
+
+        attrs = nil
+        line = nil
+      end
+      puts "Finished processing file for " + stock.name
     end
 
     def self.line_to_stock_attrs(line)

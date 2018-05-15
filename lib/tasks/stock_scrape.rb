@@ -156,7 +156,12 @@ module Scrape
 
     def self.extract_balance_sheet(url)
       puts "Fetching balance sheet from " + url
-      doc = Nokogiri::HTML(open(url))
+      begin
+        doc = Nokogiri::HTML(open(url))
+      rescue OpenURI::HTTPError => e
+        $logger.warn("404 url" + url )
+        return nil
+      end
 
       thousands = ScrapeHelpers::BzRadar.in_thousands?(doc)
 
@@ -175,19 +180,21 @@ module Scrape
       rows.each_with_index do |row, row_index|
         category = row.children[0].text
         category = Translators::BzRadar.tr category
-        break if category == 'ignore'
+        binding.irb if category.blank?
+        next if category == 'ignore'
         row.children[1..-1].each_with_index do |col, col_index|
           begin
             current_year = first_year + col_index
-            break if years.include? current_year
-            value = col.text.gsub(' ','')
+            break unless years.include? current_year
+            value = col.xpath('.//span[@class="value"]').text
+            value = value.gsub(' ','')
             value = 0 if value.blank?
             value = value.to_d
             value = value / 1000 unless thousands
             matrix[current_year][category] = value
-          #rescue ArgumentError => e
-            #binding.irb
-            #$logger.warn("ArgumentError for url" + url + " col: " + col.text + "row: " + row.text)
+          rescue ArgumentError => e
+            binding.irb
+            $logger.warn("ArgumentError for url" + url + " col: " + col.text + "row: " + row.text)
           rescue NoMethodError => e
             binding.irb
           end
