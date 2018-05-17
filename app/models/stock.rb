@@ -14,7 +14,7 @@ class Stock < ApplicationRecord
 
   def self.test1
     matrix = []
-    header = ["ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', "nlc", "nlcPmc", "years_to_repay", "years_to_mc", "npv"]
+    header = ["ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', "nlc", "nlcPmc", "years_to_repay", "years_to_mc", "fair_value", 'market_to_fair_value']
     Stock.not_banks.all.each do |stock|
       unless stock.prices.latest.present?
         #puts "Skipping: ", stock.ticker
@@ -32,29 +32,31 @@ class Stock < ApplicationRecord
       end
       liabilities = liabilities.ltl + liabilities.stl
       cash = stock.balance_sheets.order(year: :desc).select("coalesce(cash,0) as cash")[0].cash
-      market_cap = (stock.shares * stock.prices.latest.close) / 1000
+      current_price = stock.prices.latest.close
+      market_cap = (stock.shares * current_price) / 1000
       nlc = net_profit_sum.to_d - liabilities.to_d + cash.to_d
       nlcPmc = market_cap / nlc
       average_year = net_profit_sum / 3
       years_to_repay = (liabilities - cash ) / average_year
       years_to_mc = years_to_repay + ( market_cap / average_year )
-      npv = market_cap / Stock.discount(average_year, 7, 5)
-      matrix.push [stock.ticker, cash, liabilities, market_cap, net_profit_sum.round(2), nlc.round(2), nlcPmc.round(2), years_to_repay.round(2), years_to_mc.round(2), npv.round(2)]
+      fair_value = (Stock.discount(average_year, 6, 10) + cash - liabilities) / (stock.shares/1000)
+      market_to_fair_value = (fair_value/current_price - 1) * 100
+      matrix.push [stock.ticker, cash, liabilities, market_cap, net_profit_sum.round(2), nlc.round(2), nlcPmc.round(2), years_to_repay.round(2), years_to_mc.round(2), fair_value.round(2), market_to_fair_value.round(2)]
     end
 
-    sort_by = -2
+    sort_by = -1
     rjust = 12
-    matrix.sort! {|x,y| x[sort_by] <=> y[sort_by]}
+    matrix.sort! {|x,y| y[sort_by] <=> x[sort_by]}
 
     header.map! {|x| x.rjust(rjust)}
     puts header.join(',')
     counter = 0
     matrix.each_with_index do |row, index|
-      if row[-1] < 5.0 && row[-1] > 0 && row[-4] > 0
+      if row[-5] > 0
         row.map! {|x| x.to_s.rjust(rjust)}
         puts row.join(',')
         counter += 1
-        break if counter > 20
+        break if counter > 40
       end
     end
     return nil
