@@ -124,6 +124,27 @@ class Stock < ApplicationRecord
 
   end
 
+  def self.test3
+    # "ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', EV, "years_to_repay", "avg_years_to_ev", "fair_value", 'market_to_fair_value' score
+    input = {
+      nodes: {
+        1 => {type: "Collection", value: "Stocks", selectors: ['not_banks'], successors: [2]},
+        2 => {type: "Resource", value: "Stock", output: [3,4]},
+        6 => {type: "Resource", value: "BalanceSheet", output: [], selectors: [{year: [2017]}] },
+        7 => {type: "Resource", value: "IncomeStatement", output: [], selectors: [{year: [2017, 2016]}] },
+        3 => {type: "Attribute", value: "stocks.ticker", output: [5], inputs: [2]},
+        4 => {type: "Attribute", value: "stocks.shares", output: [5], inputs: [2]},
+        5 => {type: "Operation", value: "Print", output: [], inputs: [2]},
+      },
+      edges: [
+        { 1 => 2 },
+        { 2 => 3 },
+        { 2 => 4 },
+      ]
+    }
+
+  end
+
   def self.discount(p, d, y)
     sum = 0
     y.times do |year|
@@ -131,6 +152,33 @@ class Stock < ApplicationRecord
     end
 
     return sum
+  end
+
+end
+
+class QueryGraph
+
+  def initialize(input)
+    @input = input
+    @resources = []
+    @attributes = []
+    @outputs = []
+    @selectors = []
+    @collection = @input.nodes.first[1].value.constantenize
+    binding.irb
+    traverse
+    build_query
+  end
+
+  def traverse
+    @input[:nodes].each_value do |node|
+      @resources.push node if node.type == 'Resource'
+    end
+  end
+
+  def build_query
+    @collection.constantenize
+    
   end
 
 end
