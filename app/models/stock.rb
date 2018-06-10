@@ -1,3 +1,4 @@
+require_dependency '../lib/graphs/query_graph.rb'
 class Stock < ApplicationRecord
   ActiveRecord::Base.logger = nil
 
@@ -64,46 +65,67 @@ class Stock < ApplicationRecord
   end
 
   def self.test2
+    years_count = 3
     start_time = Time.now
     # row should contain
     # "ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', EV, "years_to_repay", "avg_years_to_ev", "fair_value", 'market_to_fair_value' score
     matrix = {}
-    results = Stock.not_banks.select("*").joins(:income_statements).joins(:balance_sheets).joins("join prices on prices.id = (select id from prices where prices.stock_id = stocks.id order by time desc limit 1)").where("balance_sheets.year = income_statements.year").where("balance_sheets.year in (2016, 2017) and income_statements.year in (2016, 2017)").order("ticker asc, balance_sheets.year desc")
+    results = Stock
+        .not_banks
+        .select("*")
+        .joins(:income_statements)
+        .joins(:balance_sheets)
+        .joins("join prices on prices.id = (select id from prices where prices.stock_id = stocks.id order by time desc limit 1)")
+        .where("balance_sheets.year = income_statements.year")
+        .where("balance_sheets.year in (2015, 2016, 2017) and income_statements.year in (2015, 2016, 2017)")
+        .order("ticker asc, balance_sheets.year desc")
+
     results.each do |stock|
       matrix[stock.ticker] = {} unless matrix[stock.ticker]
-      matrix[stock.ticker][:net_profit_sum] = 0 unless matrix[stock.ticker][:net_profit_sum]
-      matrix[stock.ticker][:net_profit_sum] += stock.net_profit.to_f.round(2)
 
-      matrix[stock.ticker][:cash] = (stock.cash if stock.year == 2017).to_f.round(2)
+      obj = matrix[stock.ticker]
 
-      matrix[stock.ticker][:liabilities] = (stock.short_term_liabilities.to_f + stock.long_term_liabilities.to_f + stock.accrued_expenses.to_f).round(2) if stock.year == 2017
+      obj[:net_profit_sum] = 0 unless obj[:net_profit_sum]
+      obj[:net_profit_sum] += stock.net_profit.to_f.round(2)
+
+
+      obj[:cash] = stock.cash.to_f.round(2) if stock.year == 2017
+
+      obj[:liabilities] = (stock.short_term_liabilities.to_f + stock.long_term_liabilities.to_f + stock.accrued_expenses.to_f).round(2) if stock.year == 2017
 
 
       current_price = stock.close.round(2)
-      if !current_price || !matrix[stock.ticker][:liabilities]
+      if !current_price || !obj[:liabilities]
         matrix.delete stock.ticker
         next
       end
 
       market_cap = (stock.shares * current_price) / 1000
-      matrix[stock.ticker][:market_cap] = market_cap.round(2)
+      obj[:market_cap] = market_cap.round(2)
 
-      average_year = matrix[stock.ticker][:net_profit_sum] / 2
-      years_to_repay = (matrix[stock.ticker][:liabilities] - matrix[stock.ticker][:cash] ) / average_year
-      matrix[stock.ticker][:years_to_repay] = 0 unless matrix[stock.ticker][:years_to_repay]
-      matrix[stock.ticker][:years_to_repay] = years_to_repay.round(2)
+      average_year = obj[:net_profit_sum] / years_count
+      years_to_repay = (obj[:liabilities] - obj[:cash] ) / average_year
+      obj[:years_to_repay] = 0 unless obj[:years_to_repay]
+      obj[:years_to_repay] = years_to_repay.round(2)
 
       years_to_mc = years_to_repay + ( market_cap / average_year )
-      matrix[stock.ticker][:years_to_mc] = 0 unless matrix[stock.ticker][:years_to_mc]
-      matrix[stock.ticker][:years_to_mc] = years_to_mc.round(2)
+      obj[:years_to_mc] = 0 unless obj[:years_to_mc]
+      obj[:years_to_mc] = years_to_mc.round(2)
 
-      fair_value = (Stock.discount(average_year, 6, 10) + matrix[stock.ticker][:cash] - matrix[stock.ticker][:liabilities]) / (stock.shares/1000)
-      matrix[stock.ticker][:fair_value] = 0 unless matrix[stock.ticker][:fair_value]
-      matrix[stock.ticker][:fair_value] = fair_value.round(2)
+      ev = market_cap + obj[:liabilities] - obj[:cash]
+      years_to_ev = ev/average_year
+
+      obj[:price] = current_price.round(2)
+
+      fair_value = (Stock.discount(average_year, 6, 10) + obj[:cash] - obj[:liabilities]) / (stock.shares/1000)
+      obj[:fair_value] = 0 unless obj[:fair_value]
+      obj[:fair_value] = fair_value.round(2)
 
       market_to_fair_value = (fair_value/current_price - 1) * 100
-      matrix[stock.ticker][:market_to_fair_value] = 0 unless matrix[stock.ticker][:market_to_fair_value]
-      matrix[stock.ticker][:market_to_fair_value] = market_to_fair_value.round(2)
+      obj[:market_to_fair_value] = 0 unless obj[:market_to_fair_value]
+      obj[:market_to_fair_value] = market_to_fair_value.round(2)
+
+      obj[:years_to_ev] = years_to_ev.round(2)
 
     end
     end_time = Time.now
@@ -112,11 +134,15 @@ class Stock < ApplicationRecord
     sort_by = :market_to_fair_value
     sorted = matrix.sort {|x,y| y[1][sort_by] <=> x[1][sort_by]}
 
-    rjust = 14
-    puts "ticker " + matrix.first[1].keys.map{|x| x.to_s.rjust(rjust)}.join(',')
-    sorted.each_with_index do |row, index|
-      puts row[0] + ' ' + row[1].values.map{|x| x.to_s.rjust(rjust)}.join(',')
-      break if index > 20
+    rjust = 18
+    puts "ticker: " + matrix.first[1].keys.map{|x| x.to_s.rjust(rjust)}.join(',')
+    counter = 0
+    sorted.each do |row|
+      next if row[1][:net_profit_sum] <= 1.0 || row[1][:cash] == 0.0
+      next if row[1][:market_to_fair_value] < 10
+      puts row[0] + ': ' + row[1].values.map{|x| x.to_s.rjust(rjust)}.join(',')
+      counter += 1
+      break if counter > 50
     end
     end_time = Time.now
     puts end_time - start_time
@@ -128,13 +154,14 @@ class Stock < ApplicationRecord
     # "ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', EV, "years_to_repay", "avg_years_to_ev", "fair_value", 'market_to_fair_value' score
     input = {
       nodes: {
-        1 => {type: "Collection", value: "Stocks", selectors: ['not_banks'], successors: [2]},
-        2 => {type: "Resource", value: "Stock", output: [3,4]},
-        6 => {type: "Resource", value: "BalanceSheet", output: [], selectors: [{year: [2017]}] },
-        7 => {type: "Resource", value: "IncomeStatement", output: [], selectors: [{year: [2017, 2016]}] },
-        3 => {type: "Attribute", value: "stocks.ticker", output: [5], inputs: [2]},
-        4 => {type: "Attribute", value: "stocks.shares", output: [5], inputs: [2]},
-        5 => {type: "Operation", value: "Print", output: [], inputs: [2]},
+        '1' => {type: "Collection", value: "Stock", selectors: [{scope: 'not_banks'}], output: ['3','4']},
+        '6' => {type: "Resource", value: "BalanceSheet", output: [], selectors: [{year: 'in (2017)'}] },
+        '7' => {type: "Resource", value: "IncomeStatement", output: [], selectors: [{year: 'in (2016, 2017)'}] },
+        '8' => {type: "Resource", value: "BalanceSheet", output: [], selectors: [{cash: '> 0', year: 'in (2015)'}] },
+        '3' => {type: "Attribute", value: "stocks.ticker", output: ['5'], inputs: ['1']},
+        '4' => {type: "Attribute", value: "stocks.shares", output: ['5'], inputs: ['1']},
+        '9' => {type: "Attribute", value: "balance_sheets.cash", output: ['5'], inputs: ['6']},
+        '5' => {type: "Operation", value: "Print", output: [], inputs: ['3']},
       },
       edges: [
         { 1 => 2 },
@@ -142,6 +169,8 @@ class Stock < ApplicationRecord
         { 2 => 4 },
       ]
     }
+
+    query_graph = ::Graph::QueryGraph.new input
 
   end
 
@@ -156,29 +185,3 @@ class Stock < ApplicationRecord
 
 end
 
-class QueryGraph
-
-  def initialize(input)
-    @input = input
-    @resources = []
-    @attributes = []
-    @outputs = []
-    @selectors = []
-    @collection = @input.nodes.first[1].value.constantenize
-    binding.irb
-    traverse
-    build_query
-  end
-
-  def traverse
-    @input[:nodes].each_value do |node|
-      @resources.push node if node.type == 'Resource'
-    end
-  end
-
-  def build_query
-    @collection.constantenize
-    
-  end
-
-end
