@@ -256,11 +256,8 @@ class Stock < ApplicationRecord
                     end
 
     stock_frames.each do |stock_frame|
-      binding.irb
       stock_frame.attach_prices! prices_hash[stock_frame.id]
     end
-
-    binding.irb
   end
 
 
