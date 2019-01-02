@@ -43,9 +43,9 @@ module Scrape
 
       #self.assign_basic_details_to stock
 
-      #self.assign_income_statements_to stock
+      self.assign_income_statements_to stock
 
-      self.assign_balance_sheets_to stock
+      #self.assign_balance_sheets_to stock
     end
 
     def self.assign_basic_details_to(stock)
@@ -75,7 +75,7 @@ module Scrape
       return unless income_statements
       income_statements.each do |key, values|
         stock.income_statements.find_or_create_by(year: key, quarter: nil) do |is|
-          is.update_attributes(values)
+          is.update_attributes values
         end
       end
     end

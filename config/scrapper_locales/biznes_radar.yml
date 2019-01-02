@@ -1,0 +1,68 @@
+---
+Przychody ze sprzedaży: revenue
+Techniczny koszt wytworzenia produkcji sprzedanej: cost_of_revenue
+Koszty sprzedaży: selling_cost
+Koszty ogólnego zarządu: administrative_cost
+Zysk ze sprzedaży: gross_profit
+Pozostałe przychody operacyjne: other_operating_income
+Pozostałe koszty operacyjne: other_operating_cost
+Zysk operacyjny (EBIT): operating_protif
+Przychody finansowe: financial_income
+Koszty finansowe: financial_cost
+Pozostałe przychody (koszty): other_income
+Wynik zdarzeń nadzwyczajnych: extra_item
+Zysk przed opodatkowaniem: income_before_tax
+Zysk netto: net_profit
+Aktywa trwałe: fixed_assets
+Wartości niematerialne i prawne: intangible
+Rzeczowe składniki majątku trwałego: ppe
+Należności długoterminowe: long_term_receivables
+Inwestycje długoterminowe: long_term_investments
+Pozostałe aktywa trwałe: other_fixed_assets
+Aktywa obrotowe: assets
+Zapasy: reserves
+Należności krótkoterminowe: short_term_receivables
+Inwestycje krótkoterminowe: short_term_investments
+Środki pieniężne i inne aktywa pieniężne: cash
+Pozostałe aktywa obrotowe: other_assets
+Aktywa trwałe przeznaczone do sprzedaży: ignore
+Aktywa razem: ignore
+Kapitał własny: equity_capital
+Kapitał (fundusz) podstawowy: basic_capital
+Udziały (akcje) własne: ignore
+Kapitał (fundusz) zapasowy: reserve_fund
+Udziały niekontrolujące: ignore
+Zobowiązania długoterminowe: long_term_liabilities
+Z tytułu dostaw i usług: deliveries_services
+Kredyty i pożyczki: credits_loans
+Z tytułu emisji dłużnych papierów wartościowych: debt_securities
+Zobowiązania z tytułu leasingu finansowego: leasing
+Inne zobowiązania długoterminowe: other_long_terml_liabilities
+Zobowiązania krótkoterminowe: short_term_liabilities
+Z tytułu dostaw i usług: short_term_deliveries_services
+Kredyty i pożyczki: short_term_credit_loans
+Z tytułu emisji dłużnych papierów wartościowych: short_term_debt_securities
+Zobowiązania z tytułu leasingu finansowego: short_term_leasing
+Inne zobowiązania krótkoterminowe: other_short_term_liabilies
+Rozliczenia międzyokresowe: accrued_expenses
+Zysk (strata) netto z działalności zaniechanej: ignore
+Zysk netto akcjonariuszy jednostki dominującej: ignore
+Zysk z działalności gospodarczej: ignore
+Przychody odsetkowe: ignore
+Koszty odsetkowe: ignore
+Wynik z tytułu odsetek: ignore
+Przychody prowizyjne: ignore
+Koszty prowizyjne: ignore
+Przychody z tytułu dywidend: ignore
+Wynik handlowy i rewaluacja: ignore
+Wynik na pozostałych instrumentach finansowych: ignore
+Odpisy netto z tytułu utraty wartości kredytów: ignore
+Ogólne koszty administracyjne: ignore
+Wynik operacyjny: ignore
+Udział w zyskach jednostek podporządkowanych: ignore
+Wynik z tytułu prowizji: ignore
+Odpisy netto z tytułu utraty wartości kredytów: ignore
+Ogólne koszty administracyjne: ignore
+Wynik operacyjny: ignore
+Udział w zyskach jednostek podporządkowanych: ignore
+Pasywa razem: ignore

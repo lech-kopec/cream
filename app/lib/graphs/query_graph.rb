@@ -17,7 +17,6 @@ module Graph
 
     def traverse
       @input[:nodes].each_value do |node|
-        #@resources.push node if node[:type] == 'Resource'
         if node[:type] == 'Resource'
           if @resources[node[:value]]
             @resources[node[:value]][:selectors].concat node[:selectors]
@@ -31,14 +30,22 @@ module Graph
 
     def build_query
       query_parts = []
+
       apply_scopes
+
       @resources.each do |resource|
-        query = @root_object.select( attribute_list_for(resource[0]) ).where(ticker: '11B')
+        query = @root_object
+          .select( attribute_list_for(resource[0]) )
+          .where(ticker: '11B')
           .joins(resource[1][:value].pluralize.underscore.to_sym)
+
         query = query.where(resource[1][:selector_string]) if resource[1][:selector_string]
+
         # add join with resource and selectors
+
         query_parts.push query
       end
+
       # perform union
       binding.irb
     end

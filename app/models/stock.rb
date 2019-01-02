@@ -1,4 +1,5 @@
 require_dependency '../lib/graphs/query_graph.rb'
+require 'matplotlib/pyplot'
 class Stock < ApplicationRecord
   ActiveRecord::Base.logger = nil
 
@@ -139,10 +140,10 @@ class Stock < ApplicationRecord
     counter = 0
     sorted.each do |row|
       next if row[1][:net_profit_sum] <= 1.0 || row[1][:cash] == 0.0
-      next if row[1][:market_to_fair_value] < 10
+      next if row[1][:liabilities] > row[1][:market_cap]
       puts row[0] + ': ' + row[1].values.map{|x| x.to_s.rjust(rjust)}.join(',')
       counter += 1
-      break if counter > 50
+      break if counter > 70
     end
     end_time = Time.now
     puts end_time - start_time
@@ -172,6 +173,111 @@ class Stock < ApplicationRecord
 
     query_graph = ::Graph::QueryGraph.new input
 
+  end
+
+  def self.revenue_score
+    years_count = 3
+    start_time = Time.now
+    # row should contain
+    # "ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', EV, "years_to_repay", "avg_years_to_ev", "fair_value", 'market_to_fair_value' score
+    matrix = {}
+    #SELECT * FROM stocks INNER JOIN income_statements ON income_statements.stock_id = stocks.id INNER JOIN balance_sheets ON balance_sheets.stock_id = stocks.id join prices on prices.id = (select id from prices where prices.stock_id = stocks.id order by time desc limit 1) WHERE (sector_id != 1) AND (balance_sheets.year = income_statements.year) AND (balance_sheets.year in (2015, 2016, 2017) and income_statements.year in (2015, 2016, 2017)) ORDER BY ticker asc, balance_sheets.year asc
+    results = Stock
+        .not_banks
+        .select("*")
+        .joins(:income_statements)
+        .joins(:balance_sheets)
+        .joins("join prices on prices.id = (select id from prices where prices.stock_id = stocks.id order by time desc limit 1)")
+        .where(name: 'KGHM')
+        .where("balance_sheets.year = income_statements.year")
+      .order("ticker asc, balance_sheets.year asc")
+
+    results.each do |stock|
+      matrix[stock.ticker] = {} unless matrix[stock.ticker]
+
+      obj = matrix[stock.ticker]
+      obj[:prices] ||= []
+      obj[:yearly_avgs] ||= []
+      obj[:prices].push stock.close.round(2)
+ 
+      if !obj[:income_prevY1]
+        obj[:income_prevY1] = stock.net_profit
+        next
+      end
+      if !obj[:income_prevY2]
+        obj[:income_prevY2] = stock.net_profit
+        next
+      end
+      if obj[:income_prevY1] && obj[:income_prevY2]
+        obj[:income_prevY3] = stock.net_profit
+        avg = ( obj[:income_prevY1] + obj[:income_prevY2] + obj[:income_prevY3] ) / 3
+        obj[:yearly_avgs].push avg.to_f
+        obj[:income_prevY1] = obj[:income_prevY2]
+        obj[:income_prevY2] = obj[:income_prevY3]
+      end
+
+    end
+    plt = Matplotlib::Pyplot
+
+    prices = matrix["KGH"][:prices]
+    income_avgs = matrix["KGH"][:yearly_avgs]
+
+    binding.irb
+
+    plt.plot (1..prices.length).to_a, prices
+    plt.plot (1..income_avgs.length).to_a, income_avgs
+    plt.show
+
+    return nil;
+
+  end
+
+  def self.record_test
+    require_dependency '../lib/record_processing/stock_frame.rb'
+    results = Stock
+        .not_banks
+        .select("*")
+        .joins(:income_statements)
+        .joins(:balance_sheets)
+        .where(name: 'KGHM')
+        .where("balance_sheets.year = income_statements.year")
+      .order("ticker asc, balance_sheets.year asc").limit(2)
+
+
+    stock_frames = ::RecordProcessing.import_from_active_record(results)
+    requested_years = stock_frames[0].years_in_processing
+    stock_ids = stock_frames.map {|sf| sf.stock_id}
+
+    prices_hash = Stock
+                    .find_prices_on_yearly_reports(stock_ids, requested_years)
+                    .inject({}) do |h, v|
+                      h[v.stock_id] ? h[v.stock_id].push(v) : h[v.stock_id] = [v]
+                      h
+                    end
+
+    stock_frames.each do |stock_frame|
+      binding.irb
+      stock_frame.attach_prices! prices_hash[stock_frame.id]
+    end
+
+    binding.irb
+  end
+
+
+  def self.find_prices_on_yearly_reports(stock_ids, years)
+    where_stm = []
+    years.each do |year|
+      where_stm.push(
+        "(time > '#{year}-03-10' and time < '#{year}-03-15')"
+      )
+    end
+
+    return Price.
+              select('max(time) as time, max(close) as close, stock_id').
+              where("stock_id in (#{stock_ids.join(',')})").
+              where(where_stm.join(' AND ')).
+              order("time").
+              group("stock_id")
   end
 
   def self.discount(p, d, y)
