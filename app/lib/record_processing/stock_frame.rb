@@ -20,9 +20,7 @@ module RecordProcessing
         end
       end
     end
-    #
-    # TODO each element in hash should be stock_frame??
-    #
+
     results = []
     hash.each_pair do |key, value|
       results.push ::RecordProcessing::StockFrame.new(value)
@@ -54,10 +52,6 @@ module RecordProcessing
           return @data[key]
         end
       end
-    end
-
-    def years_in_processing
-      return @data["year"]
     end
 
     def id

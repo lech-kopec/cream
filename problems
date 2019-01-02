@@ -1,2 +1,13 @@
 no prices on weekend, so need to find price on some date or closest date
 no date of publication for reports
+
+
+
+
+1. Dodac publication date to raportow
+  - potem join do glownego zapytania  - nadal problem z niedokladnymi datami
+  A - mozeby dodac brakujace ceny?
+
+2. Dodac publication date - price
+  - moze byc problem przy scalaniu akcji - czy chcemy miec znormalizowane ceny na instrumentu
+

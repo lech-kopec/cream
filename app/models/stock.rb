@@ -233,6 +233,7 @@ class Stock < ApplicationRecord
   end
 
   def self.record_test
+    # !!! Important - Order needs to be maintained for different queries !!!
     require_dependency '../lib/record_processing/stock_frame.rb'
     results = Stock
         .not_banks
@@ -245,7 +246,7 @@ class Stock < ApplicationRecord
 
 
     stock_frames = ::RecordProcessing.import_from_active_record(results)
-    requested_years = stock_frames[0].years_in_processing
+    requested_years = stock_frames[0].year
     stock_ids = stock_frames.map {|sf| sf.stock_id}
 
     prices_hash = Stock
@@ -258,6 +259,8 @@ class Stock < ApplicationRecord
     stock_frames.each do |stock_frame|
       stock_frame.attach_prices! prices_hash[stock_frame.id]
     end
+
+    return stock_frames
   end
 
 
@@ -270,11 +273,14 @@ class Stock < ApplicationRecord
     end
 
     return Price.
-              select('max(time) as time, max(close) as close, stock_id').
+              select("max(time) as time,
+                     max(close) as close,
+                     date_part('year', time) as year,
+                     stock_id").
               where("stock_id in (#{stock_ids.join(',')})").
-              where(where_stm.join(' AND ')).
+              where(where_stm.join(' OR ')).
               order("time").
-              group("stock_id")
+              group("stock_id", "year")
   end
 
   def self.discount(p, d, y)
