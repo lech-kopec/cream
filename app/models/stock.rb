@@ -240,8 +240,10 @@ class Stock < ApplicationRecord
         .select("*")
         .joins(:income_statements)
         .joins(:balance_sheets)
+        .joins(:cash_flows)
         .where(name: 'KGHM')
         .where("balance_sheets.year = income_statements.year")
+        .where("balance_sheets.year = cash_flows.year")
       .order("ticker asc, balance_sheets.year asc").limit(2)
 
 
@@ -265,22 +267,21 @@ class Stock < ApplicationRecord
 
 
   def self.find_prices_on_yearly_reports(stock_ids, years)
+
     where_stm = []
     years.each do |year|
-      where_stm.push(
-        "(time > '#{year}-03-10' and time < '#{year}-03-15')"
-      )
+      where_stm.push( "(time > '#{year}-03-10' and time < '#{year}-03-15')")
     end
 
     return Price.
-              select("max(time) as time,
-                     max(close) as close,
-                     date_part('year', time) as year,
-                     stock_id").
-              where("stock_id in (#{stock_ids.join(',')})").
-              where(where_stm.join(' OR ')).
-              order("time").
-              group("stock_id", "year")
+                select("max(time) as time,
+                       max(close) as close,
+                       date_part('year', time) as year,
+                       stock_id").
+                where("stock_id in (#{stock_ids.join(',')})").
+                where(where_stm.join(' OR ')).
+                order("time").
+                group("stock_id", "year")
   end
 
   def self.discount(p, d, y)

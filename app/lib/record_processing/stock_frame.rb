@@ -59,7 +59,7 @@ module RecordProcessing
     end
 
     def attach_prices!(prices)
-      @data["price"] = prices.map(&:close)
+      @data["close"] = prices.map(&:close)
     end
 
   end
