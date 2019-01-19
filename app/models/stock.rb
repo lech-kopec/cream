@@ -4,6 +4,7 @@ class Stock < ApplicationRecord
   ActiveRecord::Base.logger = nil
 
   belongs_to :market
+  belongs_to :sector
 
   has_many :income_statements
   has_many :balance_sheets
@@ -232,23 +233,27 @@ class Stock < ApplicationRecord
 
   end
 
-  def self.record_test
+  def self.ranking_1
+    testing_year = 2016
+    requested_years = ((testing_year-2)..testing_year).to_a
     # !!! Important - Order needs to be maintained for different queries !!!
+    #
+    # I should get the balance_sheets from lastest quarter?
+    # Missing prices for new stocks - how to nicley remove those from sql results???
     require_dependency '../lib/record_processing/stock_frame.rb'
     results = Stock
         .not_banks
         .select("*")
         .joins(:income_statements)
         .joins(:balance_sheets)
-        .joins(:cash_flows)
-        .where(name: 'KGHM')
+        .where("sector_id != 24") #exclude capital markets sector
+        .where("balance_sheets.year in (#{requested_years.join(',')})")
         .where("balance_sheets.year = income_statements.year")
-        .where("balance_sheets.year = cash_flows.year")
-      .order("ticker asc, balance_sheets.year asc").limit(2)
+      .order("ticker asc, balance_sheets.year asc")
 
 
     stock_frames = ::RecordProcessing.import_from_active_record(results)
-    requested_years = stock_frames[0].year
+    #requested_years = stock_frames[0].year
     stock_ids = stock_frames.map {|sf| sf.stock_id}
 
     prices_hash = Stock
@@ -258,11 +263,38 @@ class Stock < ApplicationRecord
                       h
                     end
 
+    empty = []
     stock_frames.each do |stock_frame|
+      unless prices_hash[stock_frame.id] && prices_hash[stock_frame.id].length == requested_years.length
+        empty.push stock_frame
+        next
+      end
+      unless stock_frame.short_term_investments.last > 0
+        empty.push stock_frame
+        next
+      end
       stock_frame.attach_prices! prices_hash[stock_frame.id]
     end
 
-    return stock_frames
+    ranking, by_ticker = ScoringModel.t1(stock_frames - empty)
+    top_20 = {}
+    growths = []
+    puts "Ranking after financial year: #{requested_years.last}"
+    ranking.each do |key, value|
+      next if key <= 0
+      latest_price = Price.where(stock_id: value.id).where("time < '#{requested_years.last + 2}-06-16'").last
+      growth = ((latest_price.close / value.close.last) - 1 ) * 100
+      growths.push growth
+      puts "#{key.to_s}:IncomeSpeed:#{value.income_speed.round(2).to_s}: #{value.name} #{value.close.last.to_s} -> #{latest_price.close.to_s} (#{latest_price.time.to_date}) = #{growth.round(2).to_s}%"
+      top_20[key] = value
+      break if top_20.length > 20
+    end
+    puts "Avergage growth: #{growths.sum / growths.length}"
+    positive_results = growths.select{|x| x >0}.count
+    positive_perc = (positive_results / growths.length.to_f) * 100
+    puts "Positive results: #{positive_results} out of #{growths.length} = #{positive_perc.to_s}%"
+    binding.irb
+
   end
 
 
@@ -270,7 +302,7 @@ class Stock < ApplicationRecord
 
     where_stm = []
     years.each do |year|
-      where_stm.push( "(time > '#{year}-03-10' and time < '#{year}-03-15')")
+      where_stm.push( "(time > '#{year + 1}-03-10' and time < '#{year + 1}-03-15')")
     end
 
     return Price.

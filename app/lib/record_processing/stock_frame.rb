@@ -62,6 +62,16 @@ module RecordProcessing
       @data["close"] = prices.map(&:close)
     end
 
+    def add_property(key, value)
+      @data[key] = value
+    end
+
+    def growth_on(prop)
+      result = (@data[prop].last / @data[prop].first) * 100
+      result = result.to_r.to_d(10) + 0.0001 rescue 0.0001
+      return result
+    end
+
   end
 
 end
