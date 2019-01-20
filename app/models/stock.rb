@@ -233,8 +233,7 @@ class Stock < ApplicationRecord
 
   end
 
-  def self.ranking_1
-    testing_year = 2016
+  def self.ranking_1(testing_year)
     requested_years = ((testing_year-2)..testing_year).to_a
     # !!! Important - Order needs to be maintained for different queries !!!
     #
@@ -276,25 +275,26 @@ class Stock < ApplicationRecord
       stock_frame.attach_prices! prices_hash[stock_frame.id]
     end
 
-    ranking, by_ticker = ScoringModel.t1(stock_frames - empty)
+    ranking = ScoringModel.t1(stock_frames - empty)
     top_20 = {}
     growths = []
     puts "Ranking after financial year: #{requested_years.last}"
     ranking.each do |key, value|
-      next if key <= 0
-      latest_price = Price.where(stock_id: value.id).where("time < '#{requested_years.last + 2}-06-16'").last
-      growth = ((latest_price.close / value.close.last) - 1 ) * 100
+      next if value[0] <= 0
+      latest_price = Price.where(stock_id: value[1].id).where("time < '#{requested_years.last + 2}-03-16' and time > '#{requested_years.last + 1}-04-01'").order("close asc").last
+      growth = ((latest_price.close / value[1].close.last) - 1 ) * 100
       growths.push growth
-      puts "#{key.to_s}:IncomeSpeed:#{value.income_speed.round(2).to_s}: #{value.name} #{value.close.last.to_s} -> #{latest_price.close.to_s} (#{latest_price.time.to_date}) = #{growth.round(2).to_s}%"
-      top_20[key] = value
-      break if top_20.length > 20
+      puts "#{key} : #{value[1].name} : #{value[0]}"
+      puts "IncomeSpeed : #{value[1].income_speed.round(2)}; RevGrw : #{value[1].revenue_growth.round(2)}; IncGrw : #{value[1].net_profit_growth.round(2)}; Altman : #{value[1].altman.round(2)}; Ptr : #{value[1].ptr}"
+      puts "Prices: #{value[1].close.last.to_s} -> #{latest_price.close.to_s} (#{latest_price.time.to_date}) = #{growth.round(2).to_s}%"
+      puts ""
+      top_20[key] = value[1]
+      break if top_20.length > 30
     end
     puts "Avergage growth: #{growths.sum / growths.length}"
     positive_results = growths.select{|x| x >0}.count
     positive_perc = (positive_results / growths.length.to_f) * 100
     puts "Positive results: #{positive_results} out of #{growths.length} = #{positive_perc.to_s}%"
-    binding.irb
-
   end
 
 

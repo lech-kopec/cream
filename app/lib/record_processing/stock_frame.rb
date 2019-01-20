@@ -67,7 +67,7 @@ module RecordProcessing
     end
 
     def growth_on(prop)
-      result = (@data[prop].last / @data[prop].first) * 100
+      result = (@data[prop].last / @data[prop].first)
       result = result.to_r.to_d(10) + 0.0001 rescue 0.0001
       return result
     end
