@@ -68,6 +68,26 @@ module Scrape
       end
     end
 
+    def self.add_quarterly_income_statements(stock)
+      url = $domain_name + 'raporty-finansowe-rachunek-zyskow-i-strat/' + stock.ticker
+      income_statements = self.extractIncomeStatementsQuarterly(url)
+      return unless income_statements
+      income_statements.each do |key, values|
+        period = key.split('/')
+        year = period[0].to_i
+        quarter = period[1].scan(/\d+/)[0].to_i
+        if year == 2018
+          stock.income_statements.find_or_create_by(year: year, quarter: quarter) do |is|
+            puts "Current id: #{is.id}"
+            is.update_attributes(values)
+          end
+        end
+      end
+    end
+
+    def self.add_quarterly_balance_sheets
+    end
+
     def self.assign_income_statements_to(stock)
       url = $domain_name + 'raporty-finansowe-rachunek-zyskow-i-strat/' + stock.ticker
       return unless stock.income_statements.blank?
@@ -146,8 +166,30 @@ module Scrape
     end
 
     def self.extractIncomeStatementsQuarterly(url)
-      url = 'new url for quartely'
-      return self.extractIncomeStatements(url)
+      puts "Fetching #{url}"
+      begin
+        doc = Nokogiri::HTML(open(url))
+      rescue
+        $logger.warn("404 url" + url )
+        return nil
+      end
+
+      empty = doc.xpath('/html/body/div[2]/div[2]/div[1]/div/main/div/div/p')
+      unless empty.blank?
+        puts "Blank"
+        return nil
+      end
+      puts "Error opening url" + url unless doc
+
+      new_link = doc.xpath('/html/body/div[2]/div[2]/div[1]/div/main/div/div/div[4]/div[1]/a[1]')
+      return nil unless new_link.length > 0
+      new_link = new_link.attr('href').value
+      unless new_link
+        puts "missing quarter link"
+        return nil
+      end
+      new_link = $domain_name + new_link
+      return self.extractIncomeStatements(new_link,true)
     end
 
     def self.extract_balance_sheets_yearly(url)
@@ -203,7 +245,7 @@ module Scrape
       return matrix
     end
 
-    def self.extractIncomeStatements(url)
+    def self.extractIncomeStatements(url, is_quarterly = false)
       puts "Fetching income_statements from " + url
       doc = Nokogiri::HTML(open(url))
 
@@ -218,15 +260,15 @@ module Scrape
       rows = doc.xpath('//table[@class="report-table"]/tr')
 
       begin
-        years = rows[0].text.scan(/\t(\d+)\n/).flatten.map(&:to_i)
+        periods = rows[0].text.scan(/\t(\d+)\n/).flatten.map(&:to_i)
+        quarters = rows[0].text.scan(/\t(\d+\/..)\n/).flatten
       rescue NoMethodError => e
         binding.irb
       end
-      first_year = years[0]
-      puts "years: " + years.to_s
+      first_year = periods[0]
 
-      years.each do |year|
-        matrix[year] = {}
+      ( is_quarterly ? quarters : periods ).each do |period|
+        matrix[period] = {}
       end
 
       rows.each_with_index do |row, index|
@@ -242,14 +284,17 @@ module Scrape
             category = tr
             next
           end
-          value = col.xpath('.//span[@class="value"]').text
+          value = col.xpath('.//span[@class="value"]').text.gsub(' ','')
+          value = 0 if !value || value.length == 0
           begin
-            value = value.gsub(' ','').to_d
+            value = value.to_d
             value = value / 1000 unless thousands
-            matrix[col_index-1+first_year][category] = value
+            matrix_index = is_quarterly ? quarters[col_index - 1] : col_index-1+first_year
+            matrix[matrix_index][category] = value
           rescue NoMethodError => e
             # this happens when we go over available years with some extra columns
           rescue ArgumentError => e
+            binding.irb
             $logger.warn("ArgumentError for url" + url + " col: " + col)
           end
         end

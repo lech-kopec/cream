@@ -16,6 +16,11 @@ task :seed_stocks => :environment do
   #end
   #puts "Missing: ", Translators::BzRadar.missing
 
-  stock = Stock.find_by_ticker '11B'
-  Scrape::BiznesRadar.seed_details(stock)
+  #stock = Stock.find_by_ticker 'FIN'
+  #Scrape::BiznesRadar.add_quarterly_income_statements(stock)
+
+  Stock.not_banks.all.each do |stock|
+    #Scrape::BiznesRadar.add_quarterly_income_statements(stock)
+    Scrape::BiznesRadar.add_quarterly_balance_sheets(stock)
+  end
 end

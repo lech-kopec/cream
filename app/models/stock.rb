@@ -6,14 +6,21 @@ class Stock < ApplicationRecord
   belongs_to :market
   belongs_to :sector
 
-  has_many :income_statements
-  has_many :balance_sheets
-  has_many :cash_flows
-  has_many :prices
+  has_many :income_statements, dependent: :destroy
+  has_many :balance_sheets, dependent: :destroy
+  has_many :cash_flows, dependent: :destroy
+  has_many :prices, dependent: :destroy
 
   validates :name, presence: true, uniqueness: true
 
   scope :not_banks, lambda { id = Sector.find_by_name('Banks'); where("sector_id != ?", id) }
+
+  scope :not_having_is, lambda { |year, quarter| Stock.where("id not in (select stock_id from income_statements
+                                                            where year = #{year} and quarter = #{quarter} )") }
+
+  def income_quarters
+    return self.income_statements.where("quarter is not null")
+  end
 
   def self.test1
     start_time = Time.now
