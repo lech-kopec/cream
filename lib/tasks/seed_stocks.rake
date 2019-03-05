@@ -19,7 +19,7 @@ task :seed_stocks => :environment do
   #stock = Stock.find_by_ticker 'FIN'
   #Scrape::BiznesRadar.add_quarterly_income_statements(stock)
 
-  Stock.not_banks.all.each do |stock|
+  Stock.not_banks.limit(1).all.each do |stock|
     #Scrape::BiznesRadar.add_quarterly_income_statements(stock)
     Scrape::BiznesRadar.add_quarterly_balance_sheets(stock)
   end

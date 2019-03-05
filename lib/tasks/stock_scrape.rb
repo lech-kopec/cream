@@ -49,7 +49,7 @@ module Scrape
     end
 
     def self.assign_basic_details_to(stock)
-      unless stock.shares
+        url = $basic_url + stock.ticker
         puts "Fetching stock details from " + url
         stock_details = self.extractStockDetails(url)
         return unless stock_details
@@ -65,7 +65,6 @@ module Scrape
           $logger.warn('No sector found for:' + stock.ticker)
         end
         stock.save!
-      end
     end
 
     def self.add_quarterly_income_statements(stock)
@@ -85,7 +84,24 @@ module Scrape
       end
     end
 
-    def self.add_quarterly_balance_sheets
+    def self.add_quarterly_balance_sheets(stock)
+      url = $domain_name + 'raporty-finansowe-bilans/' + stock.ticker
+      quarterly_url = ScrapeHelpers::BzRadar.find_quarterly_link(url, $domain_name)
+      unless quarterly_url
+        $logger.warn("no quarterly_url " + stock.ticker )
+        return
+      end
+      puts "quarterly_url: #{quarterly_url }"
+      income_statements = self.extract_balance_sheets_quarterly(quarterly_url)
+      return unless income_statements
+      income_statements.each do |key, values|
+        period = key.split('/')
+        year = period[0].to_i
+        quarter = period[1].scan(/\d+/)[0].to_i
+        stock.balance_sheets.find_or_create_by(year: year, quarter: quarter) do |is|
+          is.update_attributes(values)
+        end
+      end
     end
 
     def self.assign_income_statements_to(stock)
@@ -195,8 +211,11 @@ module Scrape
     def self.extract_balance_sheets_yearly(url)
       return self.extract_balance_sheet(url)
     end
+    def self.extract_balance_sheets_quarterly(url)
+      return self.extract_balance_sheet(url, true)
+    end
 
-    def self.extract_balance_sheet(url)
+    def self.extract_balance_sheet(url, is_quarterly = false)
       puts "Fetching balance sheet from " + url
       begin
         doc = Nokogiri::HTML(open(url))
@@ -209,35 +228,37 @@ module Scrape
 
       matrix = {}
       years = ScrapeHelpers::BzRadar.extract_years doc
-      return nil if years.blank?
+      quarters = ScrapeHelpers::BzRadar.extract_quarters doc
+      if is_quarterly
+        return nil if quarters.blank?
+      else
+        return nil if years.blank?
+      end
       first_year = years[0]
-      last_year = years[-1]
 
-      years.each do |year|
-        matrix[year] = {}
+      ( is_quarterly ? quarters : years ).each do |period|
+        matrix[period] = {}
       end
 
       rows = doc.xpath('//table[@class="report-table"]/tr')
-      rows = rows[1..-1]
       rows.each_with_index do |row, row_index|
         category = row.children[0].text
-        category = Translators::BzRadar.tr category
-        binding.irb if category.blank?
+        category = Translators::BzRadar.tr category if row_index < 25
+        category = Translators::BzRadar.tr2 category if row_index > 24
+        next if category == nil
         next if category == 'ignore'
-        row.children[1..-1].each_with_index do |col, col_index|
+        row.children[1..-2].each_with_index do |col, col_index|
           begin
-            current_year = first_year + col_index
-            break unless years.include? current_year
+            matrix_index = is_quarterly ? quarters[col_index] : col_index + first_year
+            next unless years.include? matrix_index
             value = col.xpath('.//span[@class="value"]').text
             value = value.gsub(' ','')
             value = 0 if value.blank?
             value = value.to_d
             value = value / 1000 unless thousands
-            matrix[current_year][category] = value
-          rescue ArgumentError => e
-            binding.irb
-            $logger.warn("ArgumentError for url" + url + " col: " + col.text + "row: " + row.text)
-          rescue NoMethodError => e
+            matrix[matrix_index][category] = value
+          rescue
+            puts "matrix[matrix_index][category] = value"
             binding.irb
           end
         end

@@ -1,6 +1,6 @@
 module RecordProcessing
 
-  def self.import_from_active_record(records)
+  def self.stock_frames_from_active_record(records)
     hash = {}
 
     array_columns = BalanceSheet.column_names.concat(IncomeStatement.column_names).uniq! - ['id']

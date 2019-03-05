@@ -1,10 +1,12 @@
+# TODO 
+
 require 'nokogiri'
 require_relative 'stock_scrape'
 require_relative '../translators/income_statement'
 require 'logger'
 
 desc "Stocks seed from web"
-task :seed_stocks_MT => :environment do
+task :update_basic_info => :environment do
 
   $logger = Logger.new('log/BiznesRadar.log')
 
@@ -21,9 +23,7 @@ task :seed_stocks_MT => :environment do
       begin
         while stock = jobs.pop(true)
           puts jobs.length
-          #Scrape::BiznesRadar.add_quarterly_income_statements stock
-          Scrape::BiznesRadar.assign_balance_sheets_to(stock)
-          Scrape::BiznesRadar.add_quarterly_balance_sheets(stock)
+          Scrape::BiznesRadar.assign_basic_details_to stock
         end
       rescue ThreadError
       end
@@ -31,4 +31,8 @@ task :seed_stocks_MT => :environment do
   end
 
   workers.map(&:join)
+
+  #Stocks.not_banks.each do |stock|
+    #Scrape::BiznesRadar.assign_basic_details_to stock
+  #end
 end

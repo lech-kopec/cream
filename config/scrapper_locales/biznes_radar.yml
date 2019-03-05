@@ -38,12 +38,6 @@ Kredyty i pożyczki: credits_loans
 Z tytułu emisji dłużnych papierów wartościowych: debt_securities
 Zobowiązania z tytułu leasingu finansowego: leasing
 Inne zobowiązania długoterminowe: other_long_terml_liabilities
-Zobowiązania krótkoterminowe: short_term_liabilities
-Z tytułu dostaw i usług: short_term_deliveries_services
-Kredyty i pożyczki: short_term_credit_loans
-Z tytułu emisji dłużnych papierów wartościowych: short_term_debt_securities
-Zobowiązania z tytułu leasingu finansowego: short_term_leasing
-Inne zobowiązania krótkoterminowe: other_short_term_liabilies
 Rozliczenia międzyokresowe: accrued_expenses
 Zysk (strata) netto z działalności zaniechanej: ignore
 Zysk netto akcjonariuszy jednostki dominującej: ignore
@@ -66,3 +60,4 @@ Ogólne koszty administracyjne: ignore
 Wynik operacyjny: ignore
 Udział w zyskach jednostek podporządkowanych: ignore
 Pasywa razem: ignore
+Kapitał własny akcjonariuszy jednostki dominującej: ignore

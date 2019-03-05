@@ -18,6 +18,8 @@ class Stock < ApplicationRecord
   scope :not_having_is, lambda { |year, quarter| Stock.where("id not in (select stock_id from income_statements
                                                             where year = #{year} and quarter = #{quarter} )") }
 
+  #TODO scope :with_prices, lambda { sprices.count > 0 }
+
   def income_quarters
     return self.income_statements.where("quarter is not null")
   end
@@ -183,63 +185,6 @@ class Stock < ApplicationRecord
 
   end
 
-  def self.revenue_score
-    years_count = 3
-    start_time = Time.now
-    # row should contain
-    # "ticker", "cash", "liabilities", "market_cap", 'net_profit_sum', EV, "years_to_repay", "avg_years_to_ev", "fair_value", 'market_to_fair_value' score
-    matrix = {}
-    #SELECT * FROM stocks INNER JOIN income_statements ON income_statements.stock_id = stocks.id INNER JOIN balance_sheets ON balance_sheets.stock_id = stocks.id join prices on prices.id = (select id from prices where prices.stock_id = stocks.id order by time desc limit 1) WHERE (sector_id != 1) AND (balance_sheets.year = income_statements.year) AND (balance_sheets.year in (2015, 2016, 2017) and income_statements.year in (2015, 2016, 2017)) ORDER BY ticker asc, balance_sheets.year asc
-    results = Stock
-        .not_banks
-        .select("*")
-        .joins(:income_statements)
-        .joins(:balance_sheets)
-        .joins("join prices on prices.id = (select id from prices where prices.stock_id = stocks.id order by time desc limit 1)")
-        .where(name: 'KGHM')
-        .where("balance_sheets.year = income_statements.year")
-      .order("ticker asc, balance_sheets.year asc")
-
-    results.each do |stock|
-      matrix[stock.ticker] = {} unless matrix[stock.ticker]
-
-      obj = matrix[stock.ticker]
-      obj[:prices] ||= []
-      obj[:yearly_avgs] ||= []
-      obj[:prices].push stock.close.round(2)
- 
-      if !obj[:income_prevY1]
-        obj[:income_prevY1] = stock.net_profit
-        next
-      end
-      if !obj[:income_prevY2]
-        obj[:income_prevY2] = stock.net_profit
-        next
-      end
-      if obj[:income_prevY1] && obj[:income_prevY2]
-        obj[:income_prevY3] = stock.net_profit
-        avg = ( obj[:income_prevY1] + obj[:income_prevY2] + obj[:income_prevY3] ) / 3
-        obj[:yearly_avgs].push avg.to_f
-        obj[:income_prevY1] = obj[:income_prevY2]
-        obj[:income_prevY2] = obj[:income_prevY3]
-      end
-
-    end
-    plt = Matplotlib::Pyplot
-
-    prices = matrix["KGH"][:prices]
-    income_avgs = matrix["KGH"][:yearly_avgs]
-
-    binding.irb
-
-    plt.plot (1..prices.length).to_a, prices
-    plt.plot (1..income_avgs.length).to_a, income_avgs
-    plt.show
-
-    return nil;
-
-  end
-
   def self.ranking_1(testing_year)
     requested_years = ((testing_year-2)..testing_year).to_a
     # !!! Important - Order needs to be maintained for different queries !!!
@@ -258,7 +203,7 @@ class Stock < ApplicationRecord
       .order("ticker asc, balance_sheets.year asc")
 
 
-    stock_frames = ::RecordProcessing.import_from_active_record(results)
+    stock_frames = ::RecordProcessing.stock_frames_from_active_record(results)
     #requested_years = stock_frames[0].year
     stock_ids = stock_frames.map {|sf| sf.stock_id}
 
@@ -330,6 +275,75 @@ class Stock < ApplicationRecord
     end
 
     return sum
+  end
+
+  def net_profit_last_4_quarters
+    values = income_statements.where.not(quarter: nil).order(year: :desc).order(quarter: :desc).limit(4).map do |is|
+      is.net_profit ? is.net_profit : 0.0
+    end
+
+    return values.sum
+  end
+
+  def average_net_profit_yearly(num_years)
+    values = income_statements.where(quarter: nil).order(year: :desc).limit(num_years).map do |is|
+      is.net_profit ? is.net_profit : 0.0
+    end
+    return values.sum / num_years
+  end
+
+  def latest_balance_sheet
+    balance_sheets.order(year: :desc).order(quarter: :desc).first
+  end
+
+  def latest_cash
+    latest_balance_sheet.cash
+  end
+
+  def latest_cash_like
+    bs = latest_balance_sheet
+    return bs.short_term_investments
+  end
+
+  def latest_debt
+    latest_balance_sheet.long_term_liabilities + latest_balance_sheet.short_term_liabilities
+  end
+
+  def latest_price
+    values = prices.order(time: :desc)
+    return 0 unless values.first
+    return values.first.close
+  end
+
+
+  def fair_value
+    _fair_value.first.to_s
+  end
+
+  def _fair_value
+    year_into_future = 10
+
+    future_profit = (( net_profit_last_4_quarters - average_net_profit_yearly(5).abs ) / 2) +
+                    net_profit_last_4_quarters
+
+    dcf = Stock.discount(future_profit, 5, year_into_future)
+    cash_like = latest_cash_like
+    debt = latest_debt
+
+    ev = dcf + cash_like - debt
+
+    target_value = ev / (shares/1000)
+
+    return {
+      fair_value: target_value,
+      future_profit: future_profit,
+      cash: cash_like,
+      debt: debt
+    }
+  end
+
+  def price_to_fair_value
+    (latest_price / fair_value).round(2)
   end
 
 end
