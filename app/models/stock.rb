@@ -15,10 +15,22 @@ class Stock < ApplicationRecord
 
   scope :not_banks, lambda { id = Sector.find_by_name('Banks'); where("sector_id != ?", id) }
 
-  scope :not_having_is, lambda { |year, quarter| Stock.where("id not in (select stock_id from income_statements
-                                                            where year = #{year} and quarter = #{quarter} )") }
+  scope :not_having_is, lambda { |year, quarter|
+    Stock.where("id not in (select stock_id from income_statements
+                 where year = #{year} and quarter = #{quarter} )") }
+
+  scope :not_having_bs, lambda { |year, quarter|
+    Stock.where("id not in (select stock_id from balance_sheets
+                 where year = #{year} and quarter = #{quarter} )") }
 
   #TODO scope :with_prices, lambda { sprices.count > 0 }
+  scope :with_pisbs, lambda {
+      Stock.find_by_sql("
+                    select * from stocks where id in 
+                      (select distinct stock_id from balance_sheets INTERSECT 
+                      select distinct stock_id from income_statements INTERSECT
+                      select distinct stock_id from prices)
+                  ") }
 
   def income_quarters
     return self.income_statements.where("quarter is not null")
@@ -277,6 +289,11 @@ class Stock < ApplicationRecord
     return sum
   end
 
+  def preload_balance_sheets
+    @balance_sheets_quarterly = balance_sheets.where.not(quarter: nil).order(year: :desc).order(quarter: :desc)
+    @balance_sheets_yearly = balance_sheets.where(quarter: nil).order(year: :desc)
+  end
+
   def net_profit_last_4_quarters
     values = income_statements.where.not(quarter: nil).order(year: :desc).order(quarter: :desc).limit(4).map do |is|
       is.net_profit ? is.net_profit : 0.0
@@ -293,7 +310,7 @@ class Stock < ApplicationRecord
   end
 
   def latest_balance_sheet
-    balance_sheets.order(year: :desc).order(quarter: :desc).first
+    @balance_sheets_quarterly ||= balance_sheets.order(year: :desc).order(quarter: :desc).first
   end
 
   def latest_cash
@@ -301,8 +318,11 @@ class Stock < ApplicationRecord
   end
 
   def latest_cash_like
-    bs = latest_balance_sheet
-    return bs.short_term_investments
+    (latest_balance_sheet.intangible * 0.3 ) +
+    (latest_balance_sheet.ppe * 0.6 ) +
+    (latest_balance_sheet.short_term_receivables * 0.8) +
+    (latest_balance_sheet.long_term_investments * 0.5) +
+    latest_balance_sheet.short_term_investments
   end
 
   def latest_debt
@@ -317,14 +337,14 @@ class Stock < ApplicationRecord
 
 
   def fair_value
-    _fair_value.first.to_s
+    fair_value_combine_data.first.second.to_s
   end
 
-  def _fair_value
+  def fair_value_combine_data
     year_into_future = 10
 
     future_profit = (( net_profit_last_4_quarters - average_net_profit_yearly(5).abs ) / 2) +
-                    net_profit_last_4_quarters
+                    ((average_net_profit_yearly(3) + net_profit_last_4_quarters) / 2)
 
     dcf = Stock.discount(future_profit, 5, year_into_future)
     cash_like = latest_cash_like
@@ -343,7 +363,7 @@ class Stock < ApplicationRecord
   end
 
   def price_to_fair_value
-    (latest_price / fair_value).round(2)
+    (latest_price / fair_value_combine_data[:fair_value]).round(2)
   end
 
 end

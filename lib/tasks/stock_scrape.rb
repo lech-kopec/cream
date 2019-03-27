@@ -92,9 +92,9 @@ module Scrape
         return
       end
       puts "quarterly_url: #{quarterly_url }"
-      income_statements = self.extract_balance_sheets_quarterly(quarterly_url)
-      return unless income_statements
-      income_statements.each do |key, values|
+      data = self.extract_balance_sheets_quarterly(quarterly_url)
+      return unless data
+      data.each do |key, values|
         period = key.split('/')
         year = period[0].to_i
         quarter = period[1].scan(/\d+/)[0].to_i
@@ -118,7 +118,6 @@ module Scrape
 
     def self.assign_balance_sheets_to(stock)
       url = $domain_name + 'raporty-finansowe-bilans/' + stock.ticker
-      return unless stock.balance_sheets.blank?
       balance_sheets = self.extract_balance_sheets_yearly(url)
       return unless balance_sheets
       balance_sheets.each do |key, values|
@@ -250,7 +249,9 @@ module Scrape
         row.children[1..-2].each_with_index do |col, col_index|
           begin
             matrix_index = is_quarterly ? quarters[col_index] : col_index + first_year
-            next unless years.include? matrix_index
+            if !is_quarterly && !years.include?(matrix_index)
+              next
+            end
             value = col.xpath('.//span[@class="value"]').text
             value = value.gsub(' ','')
             value = 0 if value.blank?
