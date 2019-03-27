@@ -27,7 +27,7 @@ class Stock < ApplicationRecord
   scope :with_pisbs, lambda {
       Stock.find_by_sql("
                     select * from stocks where id in 
-                      (select distinct stock_id from balance_sheets INTERSECT 
+                      (select distinct stock_id from balance_sheets where year = 2018 and quarter = 1 INTERSECT
                       select distinct stock_id from income_statements INTERSECT
                       select distinct stock_id from prices)
                   ") }
@@ -294,8 +294,21 @@ class Stock < ApplicationRecord
     @balance_sheets_yearly = balance_sheets.where(quarter: nil).order(year: :desc)
   end
 
+  def preload_income_statements
+    @income_statements_yearly = income_statements.where(quarter: nil).order(year: :desc)
+    @income_statements_quarterly = income_statements.where.not(quarter: nil).order(year: :desc).order(quarter: :desc)
+  end
+
+  def preload
+    preload_balance_sheets
+    preload_income_statements
+  end
+
   def net_profit_last_4_quarters
-    values = income_statements.where.not(quarter: nil).order(year: :desc).order(quarter: :desc).limit(4).map do |is|
+    #values = income_statements.where.not(quarter: nil).order(year: :desc).order(quarter: :desc).limit(4).map do |is|
+      #is.net_profit ? is.net_profit : 0.0
+    #end
+    values = @income_statements_quarterly[0..3].map do |is|
       is.net_profit ? is.net_profit : 0.0
     end
 
@@ -303,14 +316,18 @@ class Stock < ApplicationRecord
   end
 
   def average_net_profit_yearly(num_years)
-    values = income_statements.where(quarter: nil).order(year: :desc).limit(num_years).map do |is|
+    #values = income_statements.where(quarter: nil).order(year: :desc).limit(num_years).map do |is|
+      #is.net_profit ? is.net_profit : 0.0
+    #end
+    values = @income_statements_yearly[0..num_years].map do |is|
       is.net_profit ? is.net_profit : 0.0
     end
     return values.sum / num_years
   end
 
   def latest_balance_sheet
-    @balance_sheets_quarterly ||= balance_sheets.order(year: :desc).order(quarter: :desc).first
+    #@balance_sheets_quarterly ||= balance_sheets.order(year: :desc).order(quarter: :desc).first
+    @balance_sheets_quarterly.first || BalanceSheet.new
   end
 
   def latest_cash
@@ -319,9 +336,9 @@ class Stock < ApplicationRecord
 
   def latest_cash_like
     (latest_balance_sheet.intangible * 0.3 ) +
-    (latest_balance_sheet.ppe * 0.6 ) +
-    (latest_balance_sheet.short_term_receivables * 0.8) +
-    (latest_balance_sheet.long_term_investments * 0.5) +
+    (latest_balance_sheet.ppe * 0.3 ) +
+    (latest_balance_sheet.short_term_receivables * 0.4) +
+    (latest_balance_sheet.long_term_investments * 0.3) +
     latest_balance_sheet.short_term_investments
   end
 
