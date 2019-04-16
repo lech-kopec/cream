@@ -9,10 +9,10 @@ task :seed_stocks_MT => :environment do
   $logger = Logger.new('log/BiznesRadar.log')
 
   Rails.logger.level = Logger::DEBUG
-  POOL = 2
+  POOL = 5
 
   jobs = Queue.new
-  Stock.not_banks.not_having_bs(2018,4).all.each do |stock|
+  Stock.not_banks.not_having_is_year(2018).all.each do |stock|
     jobs.push stock
   end
 

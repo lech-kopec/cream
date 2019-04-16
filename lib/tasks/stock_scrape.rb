@@ -106,7 +106,6 @@ module Scrape
 
     def self.assign_income_statements_to(stock)
       url = $domain_name + 'raporty-finansowe-rachunek-zyskow-i-strat/' + stock.ticker
-      return unless stock.income_statements.blank?
       income_statements = self.extractIncomeStatementsYearly(url)
       return unless income_statements
       income_statements.each do |key, values|
@@ -269,7 +268,12 @@ module Scrape
 
     def self.extractIncomeStatements(url, is_quarterly = false)
       puts "Fetching income_statements from " + url
-      doc = Nokogiri::HTML(open(url))
+      begin
+        doc = Nokogiri::HTML(open(url))
+      rescue OpenURI::HTTPError => e
+        $logger.warn("404 url" + url )
+        return nil
+      end
 
       empty = doc.xpath('/html/body/div[2]/div[2]/div[1]/div/main/div/div/p')
       return nil unless empty.blank?
@@ -285,7 +289,8 @@ module Scrape
         periods = rows[0].text.scan(/\t(\d+)\n/).flatten.map(&:to_i)
         quarters = rows[0].text.scan(/\t(\d+\/..)\n/).flatten
       rescue NoMethodError => e
-        binding.irb
+        # TODO mark as not active !!!
+        return nil
       end
       first_year = periods[0]
 
