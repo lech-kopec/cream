@@ -27,3 +27,6 @@
 /config/scrapper.yml
 /vendor/*
 tags
+
+*.dump
+*.ods

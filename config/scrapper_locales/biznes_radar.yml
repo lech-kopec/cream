@@ -61,3 +61,11 @@ Wynik operacyjny: ignore
 Udział w zyskach jednostek podporządkowanych: ignore
 Pasywa razem: ignore
 Kapitał własny akcjonariuszy jednostki dominującej: ignore
+Przepływy pieniężne z działalności operacyjnej: operating_cash_flow
+Amortyzacja: amortization
+Przepływy pieniężne z działalności inwestycyjnej: investing_cash_flow
+CAPEX (niematerialne i rzeczowe): capex
+Przepływy pieniężne z działalności finansowej: financial_cash_flow
+Emisja akcji: shares_issue
+Dywidenda: dividend
+Przepływy pieniężne razem: total_cash_flow

@@ -2,7 +2,8 @@ module Scrape
   require 'open-uri'
   require 'irb'
   require_relative '../translators/income_statement'
-  require_relative '../scrape_helpers/bzradar'
+  require_relative '../scrape_helpers/bzradar/main'
+  require_relative '../scrape_helpers/bzradar/cash_flow'
 
   module BiznesRadar
     scrape_configs = YAML.load_file('config/scrapper.yml')
@@ -93,9 +94,10 @@ module Scrape
       end
       puts "quarterly_url: #{quarterly_url }"
       data = self.extract_balance_sheets_quarterly(quarterly_url)
-      return unless data
+      return unless data || data.blank?
       data.each do |key, values|
         period = key.split('/')
+        return unless period.length > 1
         year = period[0].to_i
         quarter = period[1].scan(/\d+/)[0].to_i
         stock.balance_sheets.find_or_create_by(year: year, quarter: quarter) do |is|
@@ -328,6 +330,63 @@ module Scrape
       end
 
       return matrix
+    end
+
+    def self.get_doc(url)
+      puts "Fetching cash flows from url:" + url
+      begin
+        doc = Nokogiri::HTML(open(url))
+      rescue 
+        $logger.warn "Cant open: " + url
+        return nil
+      end
+      return doc
+    end
+
+    def self.extract_cash_flow_row(doc,i)
+        scrapper = ScrapeHelpers::BzRadar::CashFlow
+        attrs = {}
+        attrs[:operating_cash_flow] = scrapper.operating_cash_flow(doc, i)
+        attrs[:amortization] = scrapper.amortization(doc, i)
+        attrs[:investing_cash_flow] = scrapper.investing_cash_flow(doc, i)
+        attrs[:capex] = scrapper.capex(doc, i)
+        attrs[:financial_cash_flow] = scrapper.financial_cash_flow(doc, i)
+        attrs[:shares_issue] = scrapper.shares_issue(doc, i)
+        attrs[:dividend] = scrapper.dividend(doc, i)
+        attrs[:total_cash_flow] = scrapper.total_cash_flow(doc, i)
+        return attrs
+    end
+
+    def self.extract_cash_flows(stock)
+      url = "https://www.biznesradar.pl/raporty-finansowe-przeplywy-pieniezne/#{stock.ticker}"
+      doc = self.get_doc(url)
+      return nil unless doc
+      #doc = Nokogiri::HTML(File.open('cash_flow.html'))
+
+      years = ScrapeHelpers::BzRadar.extract_years(doc)
+      return unless years.length > 0
+      years.each_with_index do |year, i|
+        stock.cash_flows.find_or_create_by(year: year) do |cf|
+          attrs = self.extract_cash_flow_row(doc,i)
+          cf.update_attributes(attrs)
+        end
+      end
+
+      quarterly_url = ScrapeHelpers::BzRadar.find_quarterly_link_in_doc(doc)
+      return unless quarterly_url
+      quarter_doc = self.get_doc(quarterly_url)
+      quarters = ScrapeHelpers::BzRadar.extract_quarters(quarter_doc)
+      quarters.each_with_index do |q, index|
+        parts = q.split '/Q'
+        year = parts[0]
+        quarter = parts[1]
+        stock.cash_flows.find_or_create_by(year: year, quarter: quarter) do |cf|
+          attrs = self.extract_cash_flow_row(quarter_doc, index)
+          cf.update_attributes(attrs)
+        end
+      end
+
+
     end
   end
 end

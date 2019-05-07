@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_03_26_035337) do
+ActiveRecord::Schema.define(version: 2019_05_04_200545) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -129,6 +129,7 @@ ActiveRecord::Schema.define(version: 2019_03_26_035337) do
     t.bigint "index_id"
     t.text "comment"
     t.decimal "rating"
+    t.integer "status", default: 0
     t.index ["index_id"], name: "index_stocks_on_index_id"
     t.index ["market_id"], name: "index_stocks_on_market_id"
     t.index ["sector_id"], name: "index_stocks_on_sector_id"
