@@ -1,8 +1,6 @@
 desc "Stocks seed from web"
 task :ranking => :environment do
 
-  load 'app/lib/record_processing/stock_frame.rb'
-
   #ActiveRecord::Base.logger = Logger.new STDOUT
 
   sf = 'nil'

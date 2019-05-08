@@ -1,4 +1,4 @@
-require_dependency '../lib/stock_frame_indicators/indicators.rb'
+#require_dependency '../lib/stock_frame_indicators/indicators.rb'
 
 class ScoringModel
 

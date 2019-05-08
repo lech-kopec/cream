@@ -1,8 +1,6 @@
 desc "Stocks seed from web"
 task :ranking_store => :environment do
 
-  load 'app/lib/record_processing/stock_frame.rb'
-
   #ActiveRecord::Base.logger = Logger.new STDOUT
 
   start_year = 2010
@@ -13,6 +11,7 @@ task :ranking_store => :environment do
             references(:income_statements).
             references(:balance_sheets).
             references(:cash_flows).
+            where(ticker: 'KGH').
             where("balance_sheets.year > #{start_year} and 
                   income_statements.year > #{start_year} and
                   cash_flows.year > #{start_year} and
@@ -24,9 +23,9 @@ task :ranking_store => :environment do
             order("ticker").
             order("income_statements.year asc")
 
-  sf = RecordProcessing.stock_frames_from_relations(stocks)
+  sf = ::StockFrames.stock_frames_from_relations(stocks)
 
-  File.open('ranking.dump', 'w+') do |f|
+  File.open('kgh.dump', 'w+') do |f|
     Marshal.dump(sf, f)
   end
 

@@ -1,4 +1,4 @@
-module Graph
+module Graphs
   class QueryGraph
 
     def initialize(input)

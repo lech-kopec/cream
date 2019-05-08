@@ -1,5 +1,3 @@
-require_dependency '../lib/graphs/query_graph.rb'
-require 'matplotlib/pyplot'
 class Stock < ApplicationRecord
   enum status: [ :active, :restructuring, :bankrupcy, :removed ]
 
@@ -192,20 +190,6 @@ class Stock < ApplicationRecord
   #def price_to_fair_value
     #(latest_price / fair_value_combine_data[:fair_value]).round(2)
   #end
-
-  def self.ranking_1(testing_year)
-    testing_year = 2018
-    requested_years = ((testing_year-2)..testing_year).to_a
-    # !!! Important - Order needs to be maintained for different queries !!!
-    #
-    # I should get the balance_sheets from lastest quarter?
-    # Missing prices for new stocks - how to nicley remove those from sql results???
-
-
-    stock_frames = ::RecordProcessing.stock_frames_from_active_record(results)
-    binding.irb
-    #requested_years = stock_frames[0].year
-  end
 
 end
 

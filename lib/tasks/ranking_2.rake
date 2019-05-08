@@ -2,8 +2,6 @@
 desc "Stocks seed from web"
 task :ranking_2 => :environment do
 
-  load 'app/lib/record_processing/stock_frame.rb'
-
   start_year = 2015
 
   #ActiveRecord::Base.logger = Logger.new STDOUT
@@ -23,7 +21,7 @@ task :ranking_2 => :environment do
 
   puts "Query time: #{Time.now - start}"
 
-  sf = RecordProcessing.stock_frames_from_active_record(stocks)
+  sf = StockFrames.stock_frames_from_active_record(stocks)
   puts "Processing time: #{Time.now - start}"
   puts "rake task"
   binding.irb
