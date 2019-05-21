@@ -29,32 +29,49 @@ module StockFrames
       }
       record.balance_sheets.each{ |row|
         bs_columns.each do |cl|
+          next if cl == 'year'
           value = row[cl] || 0.0
           row.quarter ? hash[ticker]["#{cl}_q"].push(value) : hash[ticker][cl].push(value)
         end
       }
       record.cash_flows.each{ |row|
         cf_columns.each do |cl|
+          next if cl == 'year'
           value = row[cl] || 0.0
           row.quarter ? hash[ticker]["#{cl}_q"].push(value) : hash[ticker][cl].push(value)
         end
       }
       return hash
   end
+
   def self.stock_frames_from_relations(records)
+    start_year = 2010
     hashMap = {}
-    records.find_each(batch_size: 50).each do |record|
+    records = records.
+            includes(:income_statements, :balance_sheets, :cash_flows).
+            references(:income_statements).
+            references(:balance_sheets).
+            references(:cash_flows).
+            where("balance_sheets.year > #{start_year} and 
+                  income_statements.year > #{start_year} and
+                  cash_flows.year > #{start_year} and
+                  income_statements.quarter is null and
+                  balance_sheets.quarter is null and
+                  cash_flows.quarter is null and
+                  income_statements.year = balance_sheets.year and
+                  cash_flows.year = income_statements.year").
+            order("ticker").
+            order("income_statements.year asc").
+            order("balance_sheets.year asc").
+            order("cash_flows.year asc")
+
+    records.each do |record|
       StockFrames.process_fields(record, hashMap)
     end
 
     return hashMap.map do |key, value|
       ::StockFrames::Frame.new(value)
     end
-  end
-
-  def self.stock_frame_from_model(model)
-    hashMap = StockFrames.process_fields(model)
-    return StockFrames::Frame.new(hashMap.values.first)
   end
 
   def self.stock_frames_from_active_record(records)

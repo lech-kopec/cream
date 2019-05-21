@@ -1,32 +1,40 @@
+require "redis"
+
 desc "Stocks seed from web"
 task :ranking_store => :environment do
 
   #ActiveRecord::Base.logger = Logger.new STDOUT
 
-  start_year = 2010
-  stocks = Stock.
-            not_banks.
-            active.
-            includes(:income_statements, :balance_sheets, :cash_flows).
-            references(:income_statements).
-            references(:balance_sheets).
-            references(:cash_flows).
-            where(ticker: 'KGH').
-            where("balance_sheets.year > #{start_year} and 
-                  income_statements.year > #{start_year} and
-                  cash_flows.year > #{start_year} and
-                  income_statements.quarter is null and
-                  balance_sheets.quarter is null and
-                  cash_flows.quarter is null and
-                  income_statements.year = balance_sheets.year and
-                  cash_flows.year = balance_sheets.year").
-            order("ticker").
-            order("income_statements.year asc")
+  redis = Redis.new
 
-  sf = ::StockFrames.stock_frames_from_relations(stocks)
+  stocks = Stock.not_banks.active
 
-  File.open('kgh.dump', 'w+') do |f|
-    Marshal.dump(sf, f)
+  sf = redis.get(stocks.to_sql)
+  sf = Marshal.load(sf) if sf
+
+  unless sf
+    sf = ::StockFrames.stock_frames_from_relations(stocks)
+    redis.set(stocks.to_sql, Marshal.dump(sf))
   end
+
+  algo = StockFrames::Strategies::S2.new sf
+  results = algo.run(:algo, report_year: 2015)
+  puts results[-1]
+  results = algo.run(:algo, report_year: 2016)
+  puts results[-1]
+  results = algo.run(:algo, report_year: 2017)
+  puts results[-1]
+
+  #File.open('ranking_dcf_01', 'w+') do |f|
+    #results.each do |row|
+      #next unless row
+      #f.write(row.join(",") + "\n") if row.is_a? Array
+      #f.write(row + "\n") if !row.is_a? Array
+    #end
+  #end
+
+  #File.open('kgh.dump', 'w+') do |f|
+    #Marshal.dump(sf, f)
+  #end
 
 end

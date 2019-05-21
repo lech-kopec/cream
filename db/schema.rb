@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_05_04_200545) do
+ActiveRecord::Schema.define(version: 2019_05_19_184805) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -47,6 +47,8 @@ ActiveRecord::Schema.define(version: 2019_05_04_200545) do
     t.decimal "other_short_term_liabilies"
     t.decimal "accrued_expenses"
     t.bigint "stock_id"
+    t.index ["id", "year", "quarter"], name: "id_year_idx", unique: true
+    t.index ["stock_id", "year", "quarter"], name: "year_idx", unique: true
     t.index ["stock_id"], name: "index_balance_sheets_on_stock_id"
   end
 
@@ -62,6 +64,7 @@ ActiveRecord::Schema.define(version: 2019_05_04_200545) do
     t.decimal "dividend"
     t.decimal "total_cash_flow"
     t.bigint "stock_id"
+    t.index ["id", "year", "quarter"], name: "cf_id_year_idx", unique: true
     t.index ["stock_id"], name: "index_cash_flows_on_stock_id"
   end
 
@@ -83,6 +86,8 @@ ActiveRecord::Schema.define(version: 2019_05_04_200545) do
     t.decimal "extra_item"
     t.decimal "net_profit"
     t.bigint "stock_id"
+    t.decimal "price_on_report_date", default: "0.0"
+    t.index ["id", "year", "quarter"], name: "_is_id_year_idx", unique: true
     t.index ["stock_id"], name: "index_income_statements_on_stock_id"
   end
 
