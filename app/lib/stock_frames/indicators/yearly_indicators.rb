@@ -14,19 +14,18 @@ module StockFrames
       end
 
       def ev
-        # market_cap + debt - cash - long_term_investments
         return (
           market_cap + 
           @stock_frame.long_term_liabilities[@index] +
           @stock_frame.short_term_liabilities[@index] - 
-          @stock_frame.cash[@index] -
-          @stock_frame.long_term_investments[@index]
+          @stock_frame.short_term_investments[@index]
         )
       end
 
-      def return_on_assets
-        result = @stock_frame.net_profit[@index] / @stock_frame.assets[@index]
-        return StockFramesIndicators.safe_zero(result)
+      def roa
+        result = @stock_frame.net_profit[@index] / (
+          @stock_frame.assets[@index] + @stock_frame.fixed_assets[@index] )
+        return ::StockFrames::Indicators.safe_zero(result) * 100
       end
 
       def altman
@@ -38,17 +37,18 @@ module StockFrames
         #E = sales / total assets
 
         total_assets = @stock_frame.assets[@index]
-        total_liabilities = @stock_frame.long_term_liabilities[@index] + @stock_frame.short_term_liabilities[@index]
+        total_liabilities = @stock_frame.long_term_liabilities[@index] +
+                              @stock_frame.short_term_liabilities[@index]
         a = working_capital / total_assets
-        a = StockFramesIndicators.safe_zero(a)
+        a = ::StockFrames::Indicators.safe_zero(a)
         b = @stock_frame.net_profit[@index] / total_assets
-        b = StockFramesIndicators.safe_zero(b)
+        b = ::StockFrames::Indicators.safe_zero(b)
         c = @stock_frame.income_before_tax[@index] / total_assets
-        c = StockFramesIndicators.safe_zero(c)
+        c = ::StockFrames::Indicators.safe_zero(c)
         d = market_cap / total_liabilities
-        d = StockFramesIndicators.safe_zero(d)
+        d = ::StockFrames::Indicators.safe_zero(d)
         e = @stock_frame.revenue[@index] / total_assets
-        e = StockFramesIndicators.safe_zero(e)
+        e = ::StockFrames::Indicators.safe_zero(e)
 
         z_score = 1.2*a + 1.4*b + 3.3*c + 0.6*d + e
         return z_score.negative? ? 1 : z_score
@@ -58,7 +58,7 @@ module StockFrames
         score = 0
 
         score += 1 if @stock_frame.net_profit[@index] > 0
-        score += 1 if return_on_assets > 0
+        score += 1 if roa > 0
         #score += 1 if @stock_frame.operating_cash_flow[@index] > 0
         score += 1 if quality_of_earnings?
 
@@ -78,7 +78,7 @@ module StockFrames
       end
 
       def market_cap
-        return ((@stock_frame.shares * @stock_frame.close[@index]) / 1000)
+        return (@stock_frame.shares * @stock_frame.price_on_report_date[@index])
       end
 
       def quality_of_earnings?
@@ -91,13 +91,13 @@ module StockFrames
       end
 
       def long_term_leverage(index)
-        return StockFramesIndicators.safe_zero(
+        return ::StockFrames::Indicators.safe_zero(
           @stock_frame.long_term_liabilities[index] / @stock_frame.assets[index]
         )
       end
 
       def current_ratio(index)
-        return StockFramesIndicators.safe_zero(
+        return ::StockFrames::Indicators.safe_zero(
            @stock_frame.short_term_investments[index] / (
             @stock_frame.long_term_liabilities[index] + 
             @stock_frame.short_term_liabilities[index]
@@ -106,15 +106,89 @@ module StockFrames
       end
 
       def gross_margin(index)
-        return StockFramesIndicators.safe_zero(
+        return ::StockFrames::Indicators.safe_zero(
           @stock_frame.gross_profit[index] / @stock_frame.revenue[index]
         )
       end
 
       def asset_turnover_ratio(index)
-        return StockFramesIndicators.safe_zero(
+        return ::StockFrames::Indicators.safe_zero(
           @stock_frame.revenue[index] / @stock_frame.assets[index]
         )
+      end
+
+      def book_value
+        return (@stock_frame.fixed_assets[@index] + @stock_frame.assets[@index]) -
+          (@stock_frame.long_term_liabilities[@index] + @stock_frame.short_term_liabilities[@index])
+      end
+
+      def price_to_book_value
+        book_value_per_share = book_value / @stock_frame.shares
+
+        return @stock_frame.price_on_report_date[@index] / book_value_per_share
+      end
+
+      def price_to_revenue
+        return @stock_frame.price_on_report_date[@index] / 
+          (@stock_frame.revenue[@index] / @stock_frame.shares)
+      end
+
+      def price_to_operating_protif
+        return (@stock_frame.price_on_report_date[@index]) /
+          (@stock_frame.operating_protif[@index] / @stock_frame.shares)
+      end
+
+      def ev_to_revenue
+        return ev / @stock_frame.revenue[@index]
+      end
+
+      def ev_to_ebit
+        return ev / @stock_frame.operating_protif[@index]
+
+      end
+
+      def ev_to_net_profit
+        return ev / @stock_frame.net_profit[@index]
+      end
+
+      def ev_to_operating_cash_flow
+        return ev / @stock_frame.operating_cash_flow[@index]
+      end
+
+      def ev_to_net_cash_flow
+        return ev / @stock_frame.total_cash_flow[@index]
+      end
+
+      def ev_to_free_cash_flow
+        return ev / (
+          @stock_frame.operating_cash_flow[@index] -
+          @stock_frame.capex[@index]
+        )
+      end
+
+      def sales_margin
+        return (@stock_frame.gross_profit[@index] / @stock_frame.revenue[@index] ) * 100
+      end
+
+      def operating_margin
+        return (@stock_frame.operating_protif[@index] / @stock_frame.revenue[@index]) * 100
+      end
+
+      def ebit_margin
+        return (@stock_frame.income_before_tax[@index] / @stock_frame.revenue[@index]) * 100
+      end
+
+      def net_margin
+        return (@stock_frame.net_profit[@index] / @stock_frame.revenue[@index]) * 100
+      end
+
+      def roic
+        return @stock_frame.net_profit[@index] / 
+          (@stock_frame.basic_capital[@index] + 
+           @stock_frame.credits_loans[@index] +
+           @stock_frame.debt_securities[@index] -
+           @stock_frame.short_term_investments[@index])
+
       end
 
     end

@@ -333,7 +333,7 @@ module Scrape
     end
 
     def self.get_doc(url)
-      puts "Fetching cash flows from url:" + url
+      puts "Fetching doc from url:" + url
       begin
         doc = Nokogiri::HTML(open(url))
       rescue 

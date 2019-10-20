@@ -48,5 +48,9 @@ module StockFrames
       assets[index] - short_term_liabilities[index]
     end
 
+    def shares
+      return @data["shares"] / 1000
+    end
+
   end
 end

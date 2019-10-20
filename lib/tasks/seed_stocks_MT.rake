@@ -25,6 +25,7 @@ task :seed_stocks_MT => :environment do
           Scrape::BiznesRadar.add_quarterly_income_statements stock
           Scrape::BiznesRadar.assign_balance_sheets_to(stock)
           Scrape::BiznesRadar.add_quarterly_balance_sheets(stock)
+          Scrape::BiznesRadar.extract_cash_flows(stock)
         end
       rescue ThreadError
       end

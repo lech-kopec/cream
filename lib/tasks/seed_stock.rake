@@ -8,7 +8,7 @@ task :seed_stock => :environment do
 
 
   $logger = Logger.new('log/BiznesRadar.log')
-  stock = Stock.find_by_ticker 'GKI'
+  stock = Stock.find_by_ticker '01C'
   Scrape::BiznesRadar.extract_cash_flows(stock)
   Scrape::BiznesRadar.assign_income_statements_to stock
   Scrape::BiznesRadar.assign_balance_sheets_to(stock)

@@ -28,6 +28,7 @@ Pozostałe aktywa obrotowe: other_assets
 Aktywa trwałe przeznaczone do sprzedaży: ignore
 Aktywa razem: ignore
 Kapitał własny: equity_capital
+Kapitał własny akcjonariuszy jednostki dominującej: equity_capital
 Kapitał (fundusz) podstawowy: basic_capital
 Udziały (akcje) własne: ignore
 Kapitał (fundusz) zapasowy: reserve_fund
@@ -57,10 +58,7 @@ Udział w zyskach jednostek podporządkowanych: ignore
 Wynik z tytułu prowizji: ignore
 Odpisy netto z tytułu utraty wartości kredytów: ignore
 Ogólne koszty administracyjne: ignore
-Wynik operacyjny: ignore
-Udział w zyskach jednostek podporządkowanych: ignore
 Pasywa razem: ignore
-Kapitał własny akcjonariuszy jednostki dominującej: ignore
 Przepływy pieniężne z działalności operacyjnej: operating_cash_flow
 Amortyzacja: amortization
 Przepływy pieniężne z działalności inwestycyjnej: investing_cash_flow

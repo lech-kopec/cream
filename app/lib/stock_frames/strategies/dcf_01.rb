@@ -5,13 +5,14 @@ module StockFrames
       @@discount_rate = 10 / 100.0
       @@pln_bond = 2.85 / 100
 
-      def dcf(report_year: 2015)
+      def dcf(report_year: 2018)
         year_index = report_year - 2019
         return nil if (year_index - 1) <= (@sf.year.count * (-1))
         average_fcf = (free_cash_flow(year_index) + free_cash_flow(year_index - 1) ) / 2
         average_net_profit = (@sf.net_profit[year_index] + @sf.net_profit[year_index - 1]  ) / 2
         avg = ( average_fcf + average_net_profit ) / 2
         avg = average_fcf
+        byebug
         next_cash_flows = []
         10.times do |i|
           next_cash_flows.push avg
@@ -24,10 +25,11 @@ module StockFrames
 
         equity_value = _npv.reduce(0, :+) + present_value_of_terminal_value
         equity_value += cash_like(year_index) - debt(year_index)
-        equity_per_share = equity_value / (@sf.shares/1000)
+        equity_per_share = equity_value / (@sf.shares)
 
         current_discount = (equity_per_share - @sf.price_on_report_date[year_index]) / @sf.price_on_report_date[year_index]
         current_discount *= 100
+        byebug
         return nil if equity_per_share < 0.0 || current_discount < 0.0
 
         return [@sf.ticker, equity_per_share, current_discount, @sf.price_on_report_date.last]
@@ -43,7 +45,8 @@ module StockFrames
           end
           rows += 1.0
         end
-        return ["Success Rate: #{(success / rows).round(3) * 100}%"]
+        #return ["Success Rate: #{(success / rows).round(3) * 100}%"]
+        return arr
       end
 
       def cash_like(i)

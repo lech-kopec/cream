@@ -12,7 +12,7 @@ task :import_cash_flows_bz_radar_MT => :environment do
   POOL = 10
 
   jobs = Queue.new
-  Stock.not_banks.not_having_cf(2018,4).each do |stock|
+  Stock.not_banks.not_having_cf(2019,2).each do |stock|
     jobs.push stock
   end
 

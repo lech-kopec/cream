@@ -44,10 +44,10 @@ module StockFrames
       return hash
   end
 
-  def self.stock_frames_from_relations(records)
+  def self.stock_frames_from_relations(relations)
     start_year = 2010
     hashMap = {}
-    records = records.
+    records = relations.
             includes(:income_statements, :balance_sheets, :cash_flows).
             references(:income_statements).
             references(:balance_sheets).
@@ -65,12 +65,40 @@ module StockFrames
             order("balance_sheets.year asc").
             order("cash_flows.year asc")
 
+    binding.pry
     records.each do |record|
       StockFrames.process_fields(record, hashMap)
     end
 
+    ::StockFrames.attach_prices(relations, hashMap)
+
     return hashMap.map do |key, value|
       ::StockFrames::Frame.new(value)
+    end
+  end
+
+  def  self.attach_prices(relations, hashMap)
+    stock_ids = relations.map(&:id)
+    prices = Price.find_by_sql("
+      select 
+        stock_id,
+        avg(close),
+        extract(year from time) as year,
+        extract(quarter from time) as quarter
+      from prices
+      where stock_id in (#{stock_ids.join(',')})
+      group by stock_id, year, quarter 
+      order by stock_id, year, quarter
+                               ")
+    prices_map = {}
+    prices.each do |price|
+      prices_map[price.stock_id] = prices_map[price.stock_id] || {}
+      prices_map[price.stock_id][price['year'].to_i] = prices_map[price.stock_id][price['year'].to_i] || {}
+      prices_map[price.stock_id][price['year'].to_i][price['quarter'].to_i] = price['avg']
+    end
+
+    hashMap.map do |key, value|
+      value["prices"] = prices_map[value["id"]]
     end
   end
 

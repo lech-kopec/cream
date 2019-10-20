@@ -1,9 +1,17 @@
 require "redis"
+class BigDecimal
+  def r2
+    return self.round(2)
+  end
+end
+class Float
+  def r2
+    return self.round(2)
+  end
+end
 
 desc "Stocks seed from web"
 task :ranking_store => :environment do
-
-  #ActiveRecord::Base.logger = Logger.new STDOUT
 
   redis = Redis.new
 
@@ -17,24 +25,23 @@ task :ranking_store => :environment do
     redis.set(stocks.to_sql, Marshal.dump(sf))
   end
 
-  algo = StockFrames::Strategies::S2.new sf
-  results = algo.run(:algo, report_year: 2015)
-  puts results[-1]
-  results = algo.run(:algo, report_year: 2016)
-  puts results[-1]
-  results = algo.run(:algo, report_year: 2017)
-  puts results[-1]
+  algo = StockFrames::Strategies::S5.new sf
+  #results = algo.run(:algo, report_year: 2015)
+  #puts results[-1]
+  #results = algo.run(:algo, report_year: 2016)
+  #puts results[-1]
+  #results = algo.run(:algo, report_year: 2017)
+  #puts results[-1]
+  results = algo.run(:algo, report_year: 2018)
 
-  #File.open('ranking_dcf_01', 'w+') do |f|
-    #results.each do |row|
-      #next unless row
-      #f.write(row.join(",") + "\n") if row.is_a? Array
-      #f.write(row + "\n") if !row.is_a? Array
-    #end
-  #end
-
-  #File.open('kgh.dump', 'w+') do |f|
-    #Marshal.dump(sf, f)
-  #end
+  File.open('ranking_dcf_01.csv', 'w+') do |f|
+    results.each do |row|
+      next unless row
+      value = row.join(",") + "\n" if row.is_a? Array
+      value = row + "\n" if !row.is_a? Array
+      f.write(value)
+      #puts value
+    end
+  end
 
 end
