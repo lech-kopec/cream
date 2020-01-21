@@ -13,22 +13,22 @@ module StockFrames
         @index = @stock_frame.year.index(year)
       end
 
-      def ev
+      def ev(i = @index)
         return (
           market_cap + 
-          @stock_frame.long_term_liabilities[@index] +
-          @stock_frame.short_term_liabilities[@index] - 
-          @stock_frame.short_term_investments[@index]
+          @stock_frame.long_term_liabilities[i] +
+          @stock_frame.short_term_liabilities[i] - 
+          @stock_frame.short_term_investments[i]
         )
       end
 
-      def roa
-        result = @stock_frame.net_profit[@index] / (
-          @stock_frame.assets[@index] + @stock_frame.fixed_assets[@index] )
+      def roa(i = @index)
+        result = @stock_frame.net_profit[i] / (
+          @stock_frame.assets[i] + @stock_frame.fixed_assets[i] )
         return ::StockFrames::Indicators.safe_zero(result) * 100
       end
 
-      def altman
+      def altman(i = @index)
         #Z-Score = 1.2A + 1.4B + 3.3C + 0.6D + 1.0E 
         #A = working capital / total assets
         #B = retained earnings / total assets
@@ -36,49 +36,49 @@ module StockFrames
         #D = market value of equity / total liabilities
         #E = sales / total assets
 
-        total_assets = @stock_frame.assets[@index]
-        total_liabilities = @stock_frame.long_term_liabilities[@index] +
-                              @stock_frame.short_term_liabilities[@index]
+        total_assets = @stock_frame.assets[i]
+        total_liabilities = @stock_frame.long_term_liabilities[i] +
+                              @stock_frame.short_term_liabilities[i]
         a = working_capital / total_assets
         a = ::StockFrames::Indicators.safe_zero(a)
-        b = @stock_frame.net_profit[@index] / total_assets
+        b = @stock_frame.net_profit[i] / total_assets
         b = ::StockFrames::Indicators.safe_zero(b)
-        c = @stock_frame.income_before_tax[@index] / total_assets
+        c = @stock_frame.income_before_tax[i] / total_assets
         c = ::StockFrames::Indicators.safe_zero(c)
         d = market_cap / total_liabilities
         d = ::StockFrames::Indicators.safe_zero(d)
-        e = @stock_frame.revenue[@index] / total_assets
+        e = @stock_frame.revenue[i] / total_assets
         e = ::StockFrames::Indicators.safe_zero(e)
 
         z_score = 1.2*a + 1.4*b + 3.3*c + 0.6*d + e
-        return z_score.negative? ? 1 : z_score
+        return z_score.negative? ? 1 : z_score.clamp(1, 10)
       end
 
-      def piotroski
+      def piotroski(i = @index)
         score = 0
 
-        score += 1 if @stock_frame.net_profit[@index] > 0
+        score += 1 if @stock_frame.net_profit[i] > 0
         score += 1 if roa > 0
-        #score += 1 if @stock_frame.operating_cash_flow[@index] > 0
+        #score += 1 if @stock_frame.operating_cash_flow[i] > 0
         score += 1 if quality_of_earnings?
 
         score += 1 if decreased_leverage?
-        score += 1 if current_ratio(@index) > current_ratio(@index - 1)
+        score += 1 if current_ratio(i) > current_ratio(i - 1)
         
-        score += 1 if gross_margin(@index) > gross_margin(@index - 1)
-        score += 1 if asset_turnover_ratio(@index) > asset_turnover_ratio(@index - 1)
+        score += 1 if gross_margin(i) > gross_margin(i - 1)
+        score += 1 if asset_turnover_ratio(i) > asset_turnover_ratio(i - 1)
 
         return score
       end
 
-      def working_capital
-        return (@stock_frame.assets[@index] -
-          @stock_frame.long_term_liabilities[@index] -
-          @stock_frame.short_term_liabilities[@index])
+      def working_capital(i = @index)
+        return (@stock_frame.assets[i] -
+          @stock_frame.long_term_liabilities[i] -
+          @stock_frame.short_term_liabilities[i])
       end
 
-      def market_cap
-        return (@stock_frame.shares * @stock_frame.price_on_report_date[@index])
+      def market_cap(i = @index)
+        return (@stock_frame.shares * @stock_frame.price_on_report_date[i])
       end
 
       def quality_of_earnings?
@@ -86,109 +86,219 @@ module StockFrames
         return true
       end
 
-      def decreased_leverage?
-        return (long_term_leverage(@index) < long_term_leverage(@index - 1) )
+      def decreased_leverage?(i = @index)
+        return (long_term_leverage(i) < long_term_leverage(i - 1) )
       end
 
-      def long_term_leverage(index)
+      def long_term_leverage(i = @index)
         return ::StockFrames::Indicators.safe_zero(
-          @stock_frame.long_term_liabilities[index] / @stock_frame.assets[index]
+          @stock_frame.long_term_liabilities[i] / @stock_frame.assets[i]
         )
       end
 
-      def current_ratio(index)
+      def current_ratio(i = @index)
         return ::StockFrames::Indicators.safe_zero(
-           @stock_frame.short_term_investments[index] / (
-            @stock_frame.long_term_liabilities[index] + 
-            @stock_frame.short_term_liabilities[index]
+           @stock_frame.short_term_investments[i] / (
+            @stock_frame.long_term_liabilities[i] + 
+            @stock_frame.short_term_liabilities[i]
           )
         )
       end
 
-      def gross_margin(index)
+      def gross_margin(i = @index)
         return ::StockFrames::Indicators.safe_zero(
-          @stock_frame.gross_profit[index] / @stock_frame.revenue[index]
+          @stock_frame.gross_profit[i] / @stock_frame.revenue[i]
         )
       end
 
-      def asset_turnover_ratio(index)
+      def asset_turnover_ratio(i = @index)
         return ::StockFrames::Indicators.safe_zero(
-          @stock_frame.revenue[index] / @stock_frame.assets[index]
+          @stock_frame.revenue[i] / @stock_frame.assets[i]
         )
       end
 
-      def book_value
-        return (@stock_frame.fixed_assets[@index] + @stock_frame.assets[@index]) -
-          (@stock_frame.long_term_liabilities[@index] + @stock_frame.short_term_liabilities[@index])
+      def book_value(i = @index)
+        return (@stock_frame.fixed_assets[i] + @stock_frame.assets[i]) -
+          (@stock_frame.long_term_liabilities[i] + @stock_frame.short_term_liabilities[i])
       end
 
-      def price_to_book_value
+      def price_to_book_value(i = @index)
         book_value_per_share = book_value / @stock_frame.shares
 
-        return @stock_frame.price_on_report_date[@index] / book_value_per_share
+        return @stock_frame.price_on_report_date[i] / book_value_per_share
       end
 
-      def price_to_revenue
-        return @stock_frame.price_on_report_date[@index] / 
-          (@stock_frame.revenue[@index] / @stock_frame.shares)
+      def price_to_revenue(i = @index)
+        return @stock_frame.price_on_report_date[i] / 
+          (@stock_frame.revenue[i] / @stock_frame.shares)
       end
 
-      def price_to_operating_protif
-        return (@stock_frame.price_on_report_date[@index]) /
-          (@stock_frame.operating_protif[@index] / @stock_frame.shares)
+      def price_to_operating_protif(i = @index)
+        return (@stock_frame.price_on_report_date[i]) /
+          (@stock_frame.operating_protif[i] / @stock_frame.shares)
       end
 
-      def ev_to_revenue
-        return ev / @stock_frame.revenue[@index]
+      def ev_to_revenue(i = @index)
+        return ev / @stock_frame.revenue[i]
       end
 
-      def ev_to_ebit
-        return ev / @stock_frame.operating_protif[@index]
+      def ev_to_ebit(i = @index)
+        return ev / @stock_frame.operating_protif[i]
 
       end
 
-      def ev_to_net_profit
-        return ev / @stock_frame.net_profit[@index]
+      def ev_to_net_profit(i = @index)
+        return ev / @stock_frame.net_profit[i]
       end
 
-      def ev_to_operating_cash_flow
-        return ev / @stock_frame.operating_cash_flow[@index]
+      def ev_to_operating_cash_flow( i = @index )
+        return ev / @stock_frame.operating_cash_flow[i]
       end
 
-      def ev_to_net_cash_flow
-        return ev / @stock_frame.total_cash_flow[@index]
+      def ev_to_net_cash_flow(i = @index)
+        return ev / @stock_frame.total_cash_flow[i]
       end
 
-      def ev_to_free_cash_flow
+      def ev_to_free_cash_flow(i = @index)
         return ev / (
-          @stock_frame.operating_cash_flow[@index] -
-          @stock_frame.capex[@index]
+          @stock_frame.operating_cash_flow[i] -
+          @stock_frame.capex[i]
         )
       end
 
-      def sales_margin
-        return (@stock_frame.gross_profit[@index] / @stock_frame.revenue[@index] ) * 100
+      def sales_margin(i = @index)
+        return (@stock_frame.gross_profit[i] / @stock_frame.revenue[i] ) * 100
       end
 
-      def operating_margin
-        return (@stock_frame.operating_protif[@index] / @stock_frame.revenue[@index]) * 100
+      def operating_margin(i = @index)
+        return (@stock_frame.operating_protif[i] / @stock_frame.revenue[i]) * 100
       end
 
-      def ebit_margin
-        return (@stock_frame.income_before_tax[@index] / @stock_frame.revenue[@index]) * 100
+      def ebit_margin(i = @index)
+        return (@stock_frame.income_before_tax[i] / @stock_frame.revenue[i]) * 100
       end
 
-      def net_margin
-        return (@stock_frame.net_profit[@index] / @stock_frame.revenue[@index]) * 100
+      def net_margin(i = @index)
+        return (@stock_frame.net_profit[i] / @stock_frame.revenue[i]) * 100
       end
 
-      def roic
-        return @stock_frame.net_profit[@index] / 
-          (@stock_frame.basic_capital[@index] + 
-           @stock_frame.credits_loans[@index] +
-           @stock_frame.debt_securities[@index] -
-           @stock_frame.short_term_investments[@index])
+      def roic(i = @index)
+        return @stock_frame.net_profit[i] / 
+          (@stock_frame.basic_capital[i] + 
+           @stock_frame.credits_loans[i] +
+           @stock_frame.debt_securities[i] -
+           @stock_frame.short_term_investments[i])
+      end
 
+      #======================================================
+      # multi year average
+
+      def roa_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          roa(index - i)
+        }.sum / years_count
+      end
+
+      def gross_margin_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          gross_margin(index - i)
+        }.sum / years_count
+      end
+
+      def price_to_book_value_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          price_to_book_value(index - i)
+        }.sum / years_count
+      end
+
+      def price_to_revenue_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          price_to_revenue(index - i)
+        }.sum / years_count
+      end
+
+      def price_to_operating_protif_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          price_to_operating_protif(index - i)
+        }.sum / years_count
+      end
+
+      def ev_to_revenue_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ev_to_revenue(index - i)
+        }.sum / years_count
+      end
+
+      def ev_to_ebit_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ev_to_ebit(index - i)
+        }.sum / years_count
+      end
+
+      def ev_to_net_profit_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ev_to_net_profit(index - i)
+        }.sum / years_count
+      end
+
+      def ev_to_operating_cash_flow_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ev_to_operating_cash_flow(index - i)
+        }.sum / years_count
+      end
+
+      def ev_to_net_cash_flow_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ev_to_net_cash_flow(index - i)
+        }.sum / years_count
+      end
+
+      def ev_to_free_cash_flow_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ev_to_free_cash_flow(index - i)
+        }.sum / years_count
+      end
+
+      def sales_margin_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          sales_margin(index - i)
+        }.sum / years_count
+      end
+
+      def operating_margin_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          operating_margin(index - i)
+        }.sum / years_count
+      end
+
+      def ebit_margin_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          ebit_margin(index - i)
+        }.sum / years_count
+      end
+
+      def net_margin_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          net_margin(index - i)
+        }.sum / years_count
+      end
+
+      def roic_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          roic(index - i)
+        }.sum / years_count
+      end
+
+      def altman_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          altman(index - i)
+        }.sum / years_count
+      end
+      
+      def piotroski_tavg(years_count, index = @index)
+        return years_count.times.map { |i|
+          piotroski(index - i)
+        }.sum / years_count
       end
 
     end

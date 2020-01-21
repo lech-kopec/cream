@@ -6,11 +6,20 @@ desc "Import stock prices for gwp from mstall_db"
 task :import_gpw_mstall_db => :environment do
 
   $logger = Logger.new('log/BiznesRadar.log')
-  Stock.not_banks.active.each do |stock|
+
+  Parallel.map(Stock.not_banks.active, in_processes: 4) do |stock|
     begin
       PriceImporters::MstallDB.import_historical(stock)
     rescue Errno::ENOENT => e
       $logger.warn("Missing price file for: " + stock.ticker)
     end
   end
+
+  #Stock.not_banks.active.each do |stock|
+  #  begin
+  #    PriceImporters::MstallDB.import_historical(stock)
+  #  rescue Errno::ENOENT => e
+  #    $logger.warn("Missing price file for: " + stock.ticker)
+  #  end
+  #end
 end

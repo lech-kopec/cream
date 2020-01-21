@@ -76,11 +76,9 @@ module Scrape
         period = key.split('/')
         year = period[0].to_i
         quarter = period[1].scan(/\d+/)[0].to_i
-        if year == 2018
-          stock.income_statements.find_or_create_by(year: year, quarter: quarter) do |is|
-            puts "Current id: #{is.id}"
-            is.update_attributes(values)
-          end
+        stock.income_statements.find_or_create_by(year: year, quarter: quarter) do |is|
+          puts "Current id: #{is.id}"
+          is.update_attributes(values)
         end
       end
     end

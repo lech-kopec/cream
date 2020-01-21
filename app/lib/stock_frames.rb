@@ -65,20 +65,18 @@ module StockFrames
             order("balance_sheets.year asc").
             order("cash_flows.year asc")
 
-    binding.pry
     records.each do |record|
       StockFrames.process_fields(record, hashMap)
     end
 
-    ::StockFrames.attach_prices(relations, hashMap)
+    ::StockFrames.attach_prices(records.map(&:id), hashMap)
 
     return hashMap.map do |key, value|
       ::StockFrames::Frame.new(value)
     end
   end
 
-  def  self.attach_prices(relations, hashMap)
-    stock_ids = relations.map(&:id)
+  def  self.attach_prices(stock_ids, hashMap)
     prices = Price.find_by_sql("
       select 
         stock_id,

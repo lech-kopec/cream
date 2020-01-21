@@ -52,5 +52,9 @@ module StockFrames
       return @data["shares"] / 1000
     end
 
+    def price_on_report(i)
+      return @data["prices"][i][1]
+    end
+
   end
 end

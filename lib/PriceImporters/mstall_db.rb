@@ -9,6 +9,7 @@ module PriceImporters
 
       puts "Opening file for " + stock.name
       File.open("tmp/mstall/#{stock.name.upcase}.mst").readlines.each do |line|
+
         next if line.include? 'TICKER'
         attrs = self.line_to_stock_attrs line
         next if @@latest_price_date >= attrs[:time]

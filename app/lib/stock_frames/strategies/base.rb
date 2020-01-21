@@ -24,7 +24,22 @@ module StockFrames
         #results.push pre_algo
         results += @frames.map do |sf|
           @sf = sf
-          self.send(method, **args)
+          begin
+            self.send(method, **args)
+          rescue TypeError => e
+            puts "TypeErro: #{@sf.ticker} : #{e}"
+            return nil
+          rescue NoMethodError => e
+            puts "Calc problem, probably no data for #{@sf.ticker} : #{e}"
+          rescue FloatDomainError => e
+            puts e
+            puts @sf.ticker
+            puts @sf
+          rescue ArgumentError => e
+            puts e
+            puts @sf.ticker
+            puts @sf
+          end
         end
         if self.respond_to?(method.to_s+"_backtest")
           backtest_results = self.send(method.to_s+"_backtest", results)
